@@ -16,6 +16,7 @@ import AssociationDetail from "@/pages/association-detail";
 import DonationFlow from "@/pages/donation-flow";
 import RegisterAssociation from "@/pages/register-association";
 import DonationHistory from "@/pages/donation-history";
+import QRScan from "@/pages/qr-scan";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -68,6 +69,7 @@ function Router() {
           <Route path="/association/:id" component={AssociationDetail} />
           <Route path="/donate/:id" component={DonationFlow} />
           <Route path="/history" component={DonationHistory} />
+          <Route path="/qr-scan" component={QRScan} />
         </>
       )}
       <Route path="/auth" component={Auth} />

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Building, Users, Euro, TrendingUp, Eye, Settings, Plus, FileText } from "lucide-react";
+import { Building, Users, Euro, TrendingUp, Eye, Settings, Plus, FileText, QrCode } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Link } from "wouter";
+import { QRCodeGenerator } from "@/components/qr-code-generator";
 
 export default function AssociationDashboard() {
   const { data: userAssociation, isLoading: associationLoading } = useQuery({
@@ -154,6 +155,7 @@ export default function AssociationDashboard() {
         <TabsList>
           <TabsTrigger value="donations">Dons récents</TabsTrigger>
           <TabsTrigger value="campaign">Campagne</TabsTrigger>
+          <TabsTrigger value="qrcode">QR Codes</TabsTrigger>
           <TabsTrigger value="receipts">Reçus fiscaux</TabsTrigger>
         </TabsList>
 
@@ -231,6 +233,28 @@ export default function AssociationDashboard() {
                   Voir la page publique
                 </Button>
               </Link>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="qrcode">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                Génération de QR Codes
+              </CardTitle>
+              <CardDescription>
+                Créez des QR codes pour faciliter les dons à votre association
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {userAssociation && (
+                <QRCodeGenerator 
+                  associationId={userAssociation.id} 
+                  associationName={userAssociation.name} 
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
