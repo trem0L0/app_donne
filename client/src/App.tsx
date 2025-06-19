@@ -10,6 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import Landing from "@/pages/landing";
 import Auth from "@/pages/auth";
+import Onboarding from "@/pages/onboarding";
+import AssociationDashboard from "@/pages/association-dashboard";
 import AssociationDetail from "@/pages/association-detail";
 import DonationFlow from "@/pages/donation-flow";
 import RegisterAssociation from "@/pages/register-association";
@@ -17,25 +19,58 @@ import DonationHistory from "@/pages/donation-history";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-lg">Chargement...</div>
+      </div>
+    );
+  }
+
+  // Not authenticated - show public pages
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route path="/auth" component={Auth} />
+        <Route path="/association/:id" component={AssociationDetail} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
+  // Authenticated but no user type - show onboarding
+  if (!user?.userType) {
+    return (
+      <Switch>
+        <Route path="/onboarding" component={Onboarding} />
+        <Route component={() => <Onboarding />} />
+      </Switch>
+    );
+  }
+
+  // Authenticated with user type - show appropriate interface
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      {user.userType === "association" ? (
         <>
-          <Route path="/" component={Landing} />
-          <Route path="/auth" component={Auth} />
+          <Route path="/" component={AssociationDashboard} />
+          <Route path="/dashboard" component={AssociationDashboard} />
+          <Route path="/register" component={RegisterAssociation} />
+          <Route path="/association/:id" component={AssociationDetail} />
         </>
       ) : (
         <>
           <Route path="/" component={Home} />
-          <Route path="/auth" component={Auth} />
           <Route path="/association/:id" component={AssociationDetail} />
           <Route path="/donate/:id" component={DonationFlow} />
-          <Route path="/register" component={RegisterAssociation} />
           <Route path="/history" component={DonationHistory} />
         </>
       )}
+      <Route path="/auth" component={Auth} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -53,6 +53,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's association (for association dashboard)
+  app.get('/api/user/association', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.associationId) {
+        return res.json(null);
+      }
+
+      const association = await storage.getAssociation(user.associationId);
+      res.json(association);
+    } catch (error) {
+      console.error("Error fetching user association:", error);
+      res.status(500).json({ message: "Erreur lors de la récupération" });
+    }
+  });
+
+  // Get association donations
+  app.get('/api/donations/association', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.associationId) {
+        return res.json([]);
+      }
+
+      const donations = await storage.getDonationsByAssociation(user.associationId);
+      res.json(donations);
+    } catch (error) {
+      console.error("Error fetching association donations:", error);
+      res.status(500).json({ message: "Erreur lors de la récupération des dons" });
+    }
+  });
+
   // Get all associations
   app.get("/api/associations", async (_req, res) => {
     try {

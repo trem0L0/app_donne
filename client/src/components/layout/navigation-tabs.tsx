@@ -10,15 +10,21 @@ export function NavigationTabs({ className }: NavigationTabsProps) {
   const [location] = useLocation();
   const { isAuthenticated } = useAuth();
 
-  const tabs = isAuthenticated 
+  const { user } = useAuth();
+
+  const tabs = !isAuthenticated 
     ? [
         { path: "/", label: "Accueil", icon: Home },
-        { path: "/history", label: "Historique", icon: Clock },
-        { path: "/register", label: "Association", icon: Heart },
+        { path: "/auth", label: "Connexion", icon: User },
+      ]
+    : user?.userType === "association"
+    ? [
+        { path: "/", label: "Tableau de bord", icon: Home },
+        { path: "/register", label: "Mon association", icon: Heart },
       ]
     : [
-        { path: "/", label: "Accueil", icon: Home },
-        { path: "/auth", label: "Connexion", icon: User },
+        { path: "/", label: "Associations", icon: Home },
+        { path: "/history", label: "Historique", icon: Clock },
       ];
 
   return (

@@ -20,6 +20,7 @@ export interface IStorage {
   createDonation(donation: InsertDonation): Promise<Donation>;
   getDonationsByEmail(email: string): Promise<Donation[]>;
   getDonationsByUserId(userId: string): Promise<Donation[]>;
+  getDonationsByAssociation(associationId: number): Promise<Donation[]>;
   getDonationById(id: number): Promise<Donation | undefined>;
   getAllDonations(): Promise<Donation[]>;
   updateAssociationStats(associationId: number, amount: number): Promise<void>;
@@ -116,6 +117,10 @@ export class DatabaseStorage implements IStorage {
 
   async getDonationsByUserId(userId: string): Promise<Donation[]> {
     return await db.select().from(donations).where(eq(donations.donorUserId, userId));
+  }
+
+  async getDonationsByAssociation(associationId: number): Promise<Donation[]> {
+    return await db.select().from(donations).where(eq(donations.associationId, associationId));
   }
 
   async getDonationById(id: number): Promise<Donation | undefined> {
