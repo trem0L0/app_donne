@@ -90,6 +90,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get receipt data for a donation
+  app.get("/api/donations/:id/receipt", async (req, res) => {
+    try {
+      const donationId = parseInt(req.params.id);
+      const donations = await storage.getDonationsByEmail(""); // Get all donations
+      const donation = donations.find(d => d.id === donationId);
+      
+      if (!donation) {
+        return res.status(404).json({ message: "Donation not found" });
+      }
+
+      const association = await storage.getAssociation(donation.associationId);
+      if (!association) {
+        return res.status(404).json({ message: "Association not found" });
+      }
+
+      const receiptData = {
+        donation,
+        association,
+        donorInfo: {
+          firstName: donation.donorFirstName,
+          lastName: donation.donorLastName,
+          email: donation.donorEmail,
+          address: donation.donorAddress,
+          postalCode: donation.donorPostalCode,
+          city: donation.donorCity,
+        },
+      };
+
+      res.json(receiptData);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch receipt data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

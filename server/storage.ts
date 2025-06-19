@@ -11,6 +11,8 @@ export interface IStorage {
   // Donations
   createDonation(donation: InsertDonation): Promise<Donation>;
   getDonationsByEmail(email: string): Promise<Donation[]>;
+  getDonationById(id: number): Promise<Donation | undefined>;
+  getAllDonations(): Promise<Donation[]>;
   updateAssociationStats(associationId: number, amount: number): Promise<void>;
 }
 
@@ -71,6 +73,7 @@ export class MemStorage implements IStorage {
       const association: Association = {
         ...assoc,
         id,
+        website: assoc.website || null,
         verified: true,
         donorCount: Math.floor(Math.random() * 20000) + 1000,
         totalRaised: (Math.floor(Math.random() * 900000) + 100000).toString(),
@@ -93,6 +96,7 @@ export class MemStorage implements IStorage {
     const association: Association = {
       ...insertAssociation,
       id,
+      website: insertAssociation.website || null,
       verified: false,
       donorCount: 0,
       totalRaised: "0",
@@ -123,6 +127,7 @@ export class MemStorage implements IStorage {
     const donation: Donation = {
       ...insertDonation,
       id,
+      donorPhone: insertDonation.donorPhone || null,
       transactionId,
       status: "completed",
       createdAt: new Date(),
@@ -144,8 +149,8 @@ export class MemStorage implements IStorage {
     if (association) {
       const updatedAssociation: Association = {
         ...association,
-        donorCount: association.donorCount + 1,
-        totalRaised: (parseFloat(association.totalRaised) + amount).toString(),
+        donorCount: (association.donorCount || 0) + 1,
+        totalRaised: (parseFloat(association.totalRaised || "0") + amount).toString(),
       };
       this.associations.set(associationId, updatedAssociation);
     }
