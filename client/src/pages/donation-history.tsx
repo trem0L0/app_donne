@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Download } from "lucide-react";
 import type { Donation, Association } from "@shared/schema";
@@ -9,14 +8,31 @@ import { formatCurrency, formatDate, calculateTaxBenefit } from "@/lib/utils";
 import { downloadTaxReceipt, type ReceiptData } from "@/lib/pdf-generator";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function DonationHistory() {
-  const [email, setEmail] = useState("test@example.com"); // In real app, get from auth
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
+  // Redirect to home if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Non autorisé",
+        description: "Vous devez être connecté. Redirection...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, authLoading, toast]);
+
   const { data: donations, isLoading } = useQuery<Donation[]>({
-    queryKey: [`/api/donations/email/${email}`],
-    enabled: !!email,
+    queryKey: ["/api/donations/user"],
+    enabled: isAuthenticated,
   });
 
   const { data: associations } = useQuery<Association[]>({
