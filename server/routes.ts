@@ -21,6 +21,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Auth placeholder
+  app.get('/api/auth/google', (req, res) => {
+    res.status(503).json({ 
+      message: "L'authentification Google nécessite la configuration des clés API GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET. Contactez l'administrateur." 
+    });
+  });
+
+  // Apple Auth placeholder  
+  app.get('/api/auth/apple', (req, res) => {
+    res.status(503).json({ 
+      message: "L'authentification Apple nécessite la configuration des clés API APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID et APPLE_PRIVATE_KEY. Contactez l'administrateur." 
+    });
+  });
+
   // Get all associations
   app.get("/api/associations", async (_req, res) => {
     try {

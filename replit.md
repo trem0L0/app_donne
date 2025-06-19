@@ -115,6 +115,9 @@ Changelog:
 - June 19, 2025. Modified donation flow to skip personal info step for authenticated users
 - June 19, 2025. Added Google and Apple Auth support with proper error handling
 - June 19, 2025. Fixed donation receipt generation and amount display issues
+- June 19, 2025. Redesigned navigation with single bottom bar for mobile-first experience
+- June 19, 2025. Created unified authentication page for both donors and associations
+- June 19, 2025. Simplified interface with context-aware navigation tabs
 ```
 
 ## User Preferences
