@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart, Shield, Users, FileText } from "lucide-react";
+import { SiGoogle, SiApple } from "react-icons/si";
 
 export default function Landing() {
   return (
@@ -15,13 +16,37 @@ export default function Landing() {
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
             Plateforme de dons pour associations françaises
           </p>
-          <Button 
-            size="lg" 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
-            onClick={() => window.location.href = '/api/login'}
-          >
-            Se connecter avec Replit
-          </Button>
+          <div className="space-y-4">
+            <Button 
+              size="lg" 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg w-full max-w-sm"
+              onClick={() => window.location.href = '/api/login'}
+            >
+              Se connecter avec Replit
+            </Button>
+            
+            <div className="flex gap-3 justify-center">
+              <Button 
+                variant="outline"
+                size="lg"
+                className="flex items-center gap-2 px-6 py-3"
+                onClick={() => window.location.href = '/api/auth/google'}
+              >
+                <SiGoogle className="w-5 h-5" />
+                Google
+              </Button>
+              
+              <Button 
+                variant="outline"
+                size="lg"
+                className="flex items-center gap-2 px-6 py-3"
+                onClick={() => window.location.href = '/api/auth/apple'}
+              >
+                <SiApple className="w-5 h-5" />
+                Apple
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Features */}
@@ -68,13 +93,37 @@ export default function Landing() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button 
-                size="lg" 
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => window.location.href = '/api/login'}
-              >
-                Créer mon compte gratuitement
-              </Button>
+              <div className="space-y-4">
+                <Button 
+                  size="lg" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white w-full max-w-sm"
+                  onClick={() => window.location.href = '/api/login'}
+                >
+                  Créer mon compte gratuitement
+                </Button>
+                
+                <div className="flex gap-3 justify-center">
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() => window.location.href = '/api/auth/google'}
+                  >
+                    <SiGoogle className="w-4 h-4" />
+                    Google
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                    onClick={() => window.location.href = '/api/auth/apple'}
+                  >
+                    <SiApple className="w-4 h-4" />
+                    Apple
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

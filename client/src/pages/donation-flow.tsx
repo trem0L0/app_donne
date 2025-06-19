@@ -172,7 +172,7 @@ export default function DonationFlow() {
       return;
     }
 
-    donationMutation.mutate(donationData);
+    createDonationMutation.mutate(donationData);
   };
 
   const onSubmit = (data: DonorInfo) => {
@@ -552,7 +552,13 @@ export default function DonationFlow() {
 
           <Button
             className="w-full bg-green-500 hover:bg-green-600 py-4"
-            onClick={() => form.handleSubmit(onSubmit)()}
+            onClick={() => {
+              if (isAuthenticated && user) {
+                processPayment();
+              } else {
+                form.handleSubmit(onSubmit)();
+              }
+            }}
             disabled={createDonationMutation.isPending}
           >
             <Heart className="mr-2" size={16} />
