@@ -1,5 +1,7 @@
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as AppleStrategy } from "passport-apple";
 
 import passport from "passport";
 import session from "express-session";
@@ -84,6 +86,7 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
+  // Replit OpenID Connect Strategy
   for (const domain of process.env
     .REPLIT_DOMAINS!.split(",")) {
     const strategy = new Strategy(
@@ -98,9 +101,86 @@ export async function setupAuth(app: Express) {
     passport.use(strategy);
   }
 
+  // Google OAuth Strategy
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "/api/auth/google/callback"
+    }, async (accessToken, refreshToken, profile, done) => {
+      try {
+        const user = {};
+        updateUserSession(user, {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          claims: () => ({
+            sub: profile.id,
+            email: profile.emails?.[0]?.value,
+            first_name: profile.name?.givenName,
+            last_name: profile.name?.familyName,
+            profile_image_url: profile.photos?.[0]?.value,
+            exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+          })
+        } as any);
+        
+        await upsertUser({
+          id: profile.id,
+          email: profile.emails?.[0]?.value,
+          firstName: profile.name?.givenName,
+          lastName: profile.name?.familyName,
+          profileImageUrl: profile.photos?.[0]?.value,
+        });
+        
+        done(null, user);
+      } catch (error) {
+        done(error, undefined);
+      }
+    }));
+  }
+
+  // Apple OAuth Strategy
+  if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY) {
+    passport.use(new AppleStrategy({
+      clientID: process.env.APPLE_CLIENT_ID,
+      teamID: process.env.APPLE_TEAM_ID,
+      keyID: process.env.APPLE_KEY_ID,
+      privateKeyString: process.env.APPLE_PRIVATE_KEY,
+      callbackURL: "/api/auth/apple/callback"
+    }, async (accessToken, refreshToken, idToken, profile, done) => {
+      try {
+        const user = {};
+        updateUserSession(user, {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          claims: () => ({
+            sub: profile.id,
+            email: profile.email,
+            first_name: profile.name?.firstName,
+            last_name: profile.name?.lastName,
+            profile_image_url: null,
+            exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+          })
+        } as any);
+        
+        await upsertUser({
+          id: profile.id,
+          email: profile.email,
+          firstName: profile.name?.firstName,
+          lastName: profile.name?.lastName,
+          profileImageUrl: null,
+        });
+        
+        done(null, user);
+      } catch (error) {
+        done(error, undefined);
+      }
+    }));
+  }
+
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
+  // Replit Auth Routes
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
@@ -114,6 +194,30 @@ export async function setupAuth(app: Express) {
       failureRedirect: "/api/login",
     })(req, res, next);
   });
+
+  // Google Auth Routes
+  app.get("/api/auth/google", 
+    passport.authenticate("google", { scope: ["profile", "email"] })
+  );
+
+  app.get("/api/auth/google/callback",
+    passport.authenticate("google", { failureRedirect: "/" }),
+    (req, res) => {
+      res.redirect("/");
+    }
+  );
+
+  // Apple Auth Routes
+  app.get("/api/auth/apple",
+    passport.authenticate("apple")
+  );
+
+  app.get("/api/auth/apple/callback",
+    passport.authenticate("apple", { failureRedirect: "/" }),
+    (req, res) => {
+      res.redirect("/");
+    }
+  );
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
