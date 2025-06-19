@@ -21,10 +21,12 @@ This is a donation platform called "DonVie" that connects users with charitable 
 - **Production Build**: esbuild for server bundling
 
 ### Data Layer
+- **Database**: PostgreSQL with persistent storage
 - **ORM**: Drizzle ORM for type-safe database operations
-- **Database**: PostgreSQL (configured for Neon Database)
+- **Connection**: Neon Database with WebSocket support
 - **Schema Management**: Drizzle Kit for migrations and schema management
 - **Validation**: Zod for runtime type validation
+- **Seeding**: Automatic database seeding with sample associations
 
 ## Key Components
 
@@ -108,6 +110,7 @@ The application uses a modern full-stack TypeScript architecture with emphasis o
 Changelog:
 - June 19, 2025. Initial setup
 - June 19, 2025. Added tax receipt generation system with PDF download functionality
+- June 19, 2025. Migrated from in-memory storage to PostgreSQL database with persistent data
 ```
 
 ## User Preferences
