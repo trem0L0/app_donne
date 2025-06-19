@@ -1,4 +1,6 @@
 import { associations, donations, type Association, type InsertAssociation, type Donation, type InsertDonation } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Associations
@@ -16,98 +18,29 @@ export interface IStorage {
   updateAssociationStats(associationId: number, amount: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private associations: Map<number, Association>;
-  private donations: Map<number, Donation>;
-  private currentAssociationId: number;
-  private currentDonationId: number;
-
-  constructor() {
-    this.associations = new Map();
-    this.donations = new Map();
-    this.currentAssociationId = 1;
-    this.currentDonationId = 1;
-    this.seedData();
-  }
-
-  private seedData() {
-    // Seed with some associations
-    const seedAssociations: InsertAssociation[] = [
-      {
-        name: "Médecins Sans Frontières",
-        mission: "Aide médicale d'urgence aux populations en détresse",
-        fullMission: "Médecins Sans Frontières est une organisation humanitaire internationale qui apporte une aide médicale d'urgence aux populations en détresse : victimes de conflits armés, d'épidémies, de catastrophes naturelles ou d'exclusion des soins.",
-        category: "health",
-        email: "contact@msf.fr",
-        phone: "01 40 21 29 29",
-        website: "www.msf.fr",
-        address: "8 rue Saint-Sabin, 75011 Paris",
-        siret: "78432158200034"
-      },
-      {
-        name: "Unicef France",
-        mission: "Protection et éducation des enfants dans le monde",
-        fullMission: "L'UNICEF œuvre dans plus de 190 pays et territoires pour atteindre les enfants et les adolescents les plus défavorisés, ainsi que pour protéger les droits de tous les enfants, partout dans le monde.",
-        category: "education",
-        email: "contact@unicef.fr",
-        phone: "01 44 39 77 77",
-        website: "www.unicef.fr",
-        address: "3 rue Duguay-Trouin, 75006 Paris",
-        siret: "78432158200035"
-      },
-      {
-        name: "WWF France",
-        mission: "Conservation de la nature et protection de l'environnement",
-        fullMission: "Le WWF est l'une des toutes premières organisations indépendantes de protection de l'environnement dans le monde. Nous agissons pour un monde où les humains vivent en harmonie avec la nature.",
-        category: "environment",
-        email: "contact@wwf.fr",
-        phone: "01 55 25 84 84",
-        website: "www.wwf.fr",
-        address: "35-37 rue Baudin, 93310 Le Pré-Saint-Gervais",
-        siret: "78432158200036"
-      }
-    ];
-
-    seedAssociations.forEach(assoc => {
-      const id = this.currentAssociationId++;
-      const association: Association = {
-        ...assoc,
-        id,
-        website: assoc.website || null,
-        verified: true,
-        donorCount: Math.floor(Math.random() * 20000) + 1000,
-        totalRaised: (Math.floor(Math.random() * 900000) + 100000).toString(),
-        createdAt: new Date(),
-      };
-      this.associations.set(id, association);
-    });
-  }
-
+export class DatabaseStorage implements IStorage {
   async getAssociations(): Promise<Association[]> {
-    return Array.from(this.associations.values());
+    return await db.select().from(associations);
   }
 
   async getAssociation(id: number): Promise<Association | undefined> {
-    return this.associations.get(id);
+    const [association] = await db.select().from(associations).where(eq(associations.id, id));
+    return association || undefined;
   }
 
   async createAssociation(insertAssociation: InsertAssociation): Promise<Association> {
-    const id = this.currentAssociationId++;
-    const association: Association = {
-      ...insertAssociation,
-      id,
-      website: insertAssociation.website || null,
-      verified: false,
-      donorCount: 0,
-      totalRaised: "0",
-      createdAt: new Date(),
-    };
-    this.associations.set(id, association);
+    const [association] = await db
+      .insert(associations)
+      .values({
+        ...insertAssociation,
+        website: insertAssociation.website || null,
+      })
+      .returning();
     return association;
   }
 
   async searchAssociations(query: string): Promise<Association[]> {
-    const allAssociations = Array.from(this.associations.values());
+    const allAssociations = await db.select().from(associations);
     return allAssociations.filter(assoc => 
       assoc.name.toLowerCase().includes(query.toLowerCase()) ||
       assoc.mission.toLowerCase().includes(query.toLowerCase())
@@ -115,54 +48,54 @@ export class MemStorage implements IStorage {
   }
 
   async getAssociationsByCategory(category: string): Promise<Association[]> {
-    const allAssociations = Array.from(this.associations.values());
-    if (category === "all") return allAssociations;
-    return allAssociations.filter(assoc => assoc.category === category);
+    if (category === "all") {
+      return await db.select().from(associations);
+    }
+    return await db.select().from(associations).where(eq(associations.category, category));
   }
 
   async createDonation(insertDonation: InsertDonation): Promise<Donation> {
-    const id = this.currentDonationId++;
-    const transactionId = `DN${new Date().getFullYear()}-${String(id).padStart(6, '0')}`;
+    const transactionId = `DN${new Date().getFullYear()}-${Date.now()}`;
     
-    const donation: Donation = {
-      ...insertDonation,
-      id,
-      donorPhone: insertDonation.donorPhone || null,
-      transactionId,
-      status: "completed",
-      createdAt: new Date(),
-    };
+    const [donation] = await db
+      .insert(donations)
+      .values({
+        ...insertDonation,
+        donorPhone: insertDonation.donorPhone || null,
+        transactionId,
+        status: "completed",
+      })
+      .returning();
     
-    this.donations.set(id, donation);
     await this.updateAssociationStats(insertDonation.associationId, parseFloat(insertDonation.amount));
     return donation;
   }
 
   async getDonationsByEmail(email: string): Promise<Donation[]> {
-    return Array.from(this.donations.values()).filter(donation => 
-      donation.donorEmail === email
-    );
+    return await db.select().from(donations).where(eq(donations.donorEmail, email));
   }
 
   async getDonationById(id: number): Promise<Donation | undefined> {
-    return this.donations.get(id);
+    const [donation] = await db.select().from(donations).where(eq(donations.id, id));
+    return donation || undefined;
   }
 
   async getAllDonations(): Promise<Donation[]> {
-    return Array.from(this.donations.values());
+    return await db.select().from(donations);
   }
 
   async updateAssociationStats(associationId: number, amount: number): Promise<void> {
-    const association = this.associations.get(associationId);
+    const [association] = await db.select().from(associations).where(eq(associations.id, associationId));
     if (association) {
-      const updatedAssociation: Association = {
-        ...association,
-        donorCount: (association.donorCount || 0) + 1,
-        totalRaised: (parseFloat(association.totalRaised || "0") + amount).toString(),
-      };
-      this.associations.set(associationId, updatedAssociation);
+      await db
+        .update(associations)
+        .set({
+          donorCount: (association.donorCount || 0) + 1,
+          totalRaised: (parseFloat(association.totalRaised || "0") + amount).toString(),
+        })
+        .where(eq(associations.id, associationId));
     }
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
