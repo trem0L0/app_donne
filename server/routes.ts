@@ -11,11 +11,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Auth routes - Combined route for both auth types
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      console.log("Session data:", req.session);
+      console.log("User data:", req.user);
+      
+      let userId: string;
+      
+      // Check for email/password session
+      if ((req.session as any).user) {
+        userId = (req.session as any).user.id;
+        console.log("Using email/password session, userId:", userId);
+      }
+      // Check for Replit auth session
+      else if (req.user && req.user.claims) {
+        userId = req.user.claims.sub;
+        console.log("Using Replit auth session, userId:", userId);
+      } else {
+        console.log("No valid session found");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const user = await storage.getUser(userId);
+      if (!user) {
+        console.log("User not found in database for userId:", userId);
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      console.log("User found:", user);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -204,33 +228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Updated auth user route to support both session types
-  app.get('/api/auth/user', async (req: any, res) => {
-    try {
-      let userId: string;
-      
-      // Check for email/password session
-      if ((req.session as any).user) {
-        userId = (req.session as any).user.id;
-      }
-      // Check for Replit auth session
-      else if (req.user && req.user.claims) {
-        userId = req.user.claims.sub;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
 
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
 
   // Logout route
   app.post('/api/auth/logout', (req, res) => {
