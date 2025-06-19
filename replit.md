@@ -124,6 +124,10 @@ Changelog:
 - June 19, 2025. Added QR code generation feature for associations with customizable parameters
 - June 19, 2025. Implemented QR code scanner for donors with camera access and URL parsing
 - June 19, 2025. Enhanced donation flow to support QR code parameters (amount, campaign)
+- June 19, 2025. Implemented complete email/password authentication system independent of Replit Auth
+- June 19, 2025. Added password hashing with bcryptjs and session management for email/password users
+- June 19, 2025. Modified all protected routes to support both Replit Auth and email/password sessions
+- June 19, 2025. Fixed session configuration for development environment and added explicit session saving
 ```
 
 ## User Preferences

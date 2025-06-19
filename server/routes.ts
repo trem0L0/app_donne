@@ -14,32 +14,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes - Combined route for both auth types
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      console.log("Session data:", req.session);
-      console.log("User data:", req.user);
-      
       let userId: string;
       
       // Check for email/password session
       if ((req.session as any).user) {
         userId = (req.session as any).user.id;
-        console.log("Using email/password session, userId:", userId);
       }
       // Check for Replit auth session
       else if (req.user && req.user.claims) {
         userId = req.user.claims.sub;
-        console.log("Using Replit auth session, userId:", userId);
       } else {
-        console.log("No valid session found");
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       const user = await storage.getUser(userId);
       if (!user) {
-        console.log("User not found in database for userId:", userId);
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      console.log("User found:", user);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -80,9 +72,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's association (for association dashboard)
-  app.get('/api/user/association', isAuthenticated, async (req: any, res) => {
+  app.get('/api/user/association', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      let userId: string;
+      
+      // Check for email/password session
+      if ((req.session as any).user) {
+        userId = (req.session as any).user.id;
+      }
+      // Check for Replit auth session
+      else if (req.user && req.user.claims) {
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const user = await storage.getUser(userId);
       
       if (!user || !user.associationId) {
@@ -98,9 +102,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get association donations
-  app.get('/api/donations/association', isAuthenticated, async (req: any, res) => {
+  app.get('/api/donations/association', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      let userId: string;
+      
+      // Check for email/password session
+      if ((req.session as any).user) {
+        userId = (req.session as any).user.id;
+      }
+      // Check for Replit auth session
+      else if (req.user && req.user.claims) {
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const user = await storage.getUser(userId);
       
       if (!user || !user.associationId) {
@@ -112,6 +128,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching association donations:", error);
       res.status(500).json({ message: "Erreur lors de la récupération des dons" });
+    }
+  });
+
+  // Get association stats
+  app.get('/api/associations/stats', async (req: any, res) => {
+    try {
+      let userId: string;
+      
+      // Check for email/password session
+      if ((req.session as any).user) {
+        userId = (req.session as any).user.id;
+      }
+      // Check for Replit auth session
+      else if (req.user && req.user.claims) {
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      if (!user || !user.associationId) {
+        return res.json({ totalDonations: 0, donorCount: 0, avgDonation: 0 });
+      }
+
+      const donations = await storage.getDonationsByAssociation(user.associationId);
+      const totalDonations = donations.reduce((sum: number, donation: any) => sum + parseFloat(donation.amount), 0);
+      const donorCount = new Set(donations.map((d: any) => d.donorEmail)).size;
+      const avgDonation = donations.length > 0 ? totalDonations / donations.length : 0;
+
+      res.json({
+        totalDonations,
+        donorCount,
+        avgDonation,
+        donationCount: donations.length
+      });
+    } catch (error) {
+      console.error("Error fetching association stats:", error);
+      res.status(500).json({ message: "Failed to fetch association stats" });
     }
   });
 
@@ -168,15 +223,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create session (simplified version)
       (req.session as any).user = { id: userId, email, userType };
 
-      res.json({ 
-        success: true, 
-        user: { 
-          id: user.id, 
-          email: user.email, 
-          firstName: user.firstName, 
-          lastName: user.lastName,
-          userType: user.userType 
-        } 
+      // Save session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Error saving session:", err);
+          return res.status(500).json({ message: "Erreur lors de la création de session" });
+        }
+        
+        res.json({ 
+          success: true, 
+          user: { 
+            id: user.id, 
+            email: user.email, 
+            firstName: user.firstName, 
+            lastName: user.lastName,
+            userType: user.userType 
+          } 
+        });
       });
     } catch (error) {
       console.error("Error registering user:", error);
