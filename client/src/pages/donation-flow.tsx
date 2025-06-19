@@ -93,10 +93,10 @@ export default function DonationFlow() {
   };
 
   const handleDownloadReceipt = async () => {
-    if (!donationResult || !association) return;
+    if (!donationResult?.donation) return;
     
     try {
-      const response = await apiRequest("GET", `/api/donations/${donationResult.id}/receipt`);
+      const response = await apiRequest("GET", `/api/donations/${donationResult.donation.id}/receipt`);
       const receiptData: ReceiptData = await response.json();
       
       downloadTaxReceipt(receiptData);
@@ -481,7 +481,10 @@ export default function DonationFlow() {
               <div className="flex justify-between">
                 <span className="text-gray-600">Donateur</span>
                 <span className="font-medium">
-                  {form.getValues("donorFirstName")} {form.getValues("donorLastName")}
+                  {isAuthenticated && user 
+                    ? `${user.firstName || 'Prénom'} ${user.lastName || 'Nom'}`
+                    : `${form.getValues("donorFirstName")} ${form.getValues("donorLastName")}`
+                  }
                 </span>
               </div>
               <div className="flex justify-between text-lg font-bold">
@@ -584,19 +587,19 @@ export default function DonationFlow() {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Numéro de transaction</span>
-                <span className="font-mono text-sm">#{donationResult.transactionId}</span>
+                <span className="font-mono text-sm">#{donationResult.donation?.transactionId || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Association</span>
-                <span className="font-medium">{association.name}</span>
+                <span className="font-medium">{donationResult.association?.name || association?.name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Montant</span>
-                <span className="font-bold text-lg">{formatCurrency(donationResult.amount)}</span>
+                <span className="font-bold text-lg">{formatCurrency(parseFloat(donationResult.donation?.amount || '0'))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Date</span>
-                <span>{donationResult.createdAt ? new Date(donationResult.createdAt).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR')}</span>
+                <span>{donationResult.donation?.createdAt ? new Date(donationResult.donation.createdAt).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR')}</span>
               </div>
             </div>
           </div>

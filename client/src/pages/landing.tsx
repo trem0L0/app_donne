@@ -30,7 +30,19 @@ export default function Landing() {
                 variant="outline"
                 size="lg"
                 className="flex items-center gap-2 px-6 py-3"
-                onClick={() => window.location.href = '/api/auth/google'}
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/auth/google');
+                    if (response.status === 503) {
+                      const data = await response.json();
+                      alert(data.message);
+                    } else {
+                      window.location.href = '/api/auth/google';
+                    }
+                  } catch (error) {
+                    alert('Erreur de connexion');
+                  }
+                }}
               >
                 <SiGoogle className="w-5 h-5" />
                 Google
@@ -40,7 +52,19 @@ export default function Landing() {
                 variant="outline"
                 size="lg"
                 className="flex items-center gap-2 px-6 py-3"
-                onClick={() => window.location.href = '/api/auth/apple'}
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/auth/apple');
+                    if (response.status === 503) {
+                      const data = await response.json();
+                      alert(data.message);
+                    } else {
+                      window.location.href = '/api/auth/apple';
+                    }
+                  } catch (error) {
+                    alert('Erreur de connexion');
+                  }
+                }}
               >
                 <SiApple className="w-5 h-5" />
                 Apple

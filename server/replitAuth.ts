@@ -101,7 +101,7 @@ export async function setupAuth(app: Express) {
     passport.use(strategy);
   }
 
-  // Google OAuth Strategy
+  // Google OAuth Strategy (configuré seulement si les clés sont disponibles)
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use(new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
@@ -119,7 +119,7 @@ export async function setupAuth(app: Express) {
             first_name: profile.name?.givenName,
             last_name: profile.name?.familyName,
             profile_image_url: profile.photos?.[0]?.value,
-            exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+            exp: Math.floor(Date.now() / 1000) + 3600
           })
         } as any);
         
@@ -129,45 +129,6 @@ export async function setupAuth(app: Express) {
           firstName: profile.name?.givenName,
           lastName: profile.name?.familyName,
           profileImageUrl: profile.photos?.[0]?.value,
-        });
-        
-        done(null, user);
-      } catch (error) {
-        done(error, undefined);
-      }
-    }));
-  }
-
-  // Apple OAuth Strategy
-  if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY) {
-    passport.use(new AppleStrategy({
-      clientID: process.env.APPLE_CLIENT_ID,
-      teamID: process.env.APPLE_TEAM_ID,
-      keyID: process.env.APPLE_KEY_ID,
-      privateKeyString: process.env.APPLE_PRIVATE_KEY,
-      callbackURL: "/api/auth/apple/callback"
-    }, async (accessToken, refreshToken, idToken, profile, done) => {
-      try {
-        const user = {};
-        updateUserSession(user, {
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          claims: () => ({
-            sub: profile.id,
-            email: profile.email,
-            first_name: profile.name?.firstName,
-            last_name: profile.name?.lastName,
-            profile_image_url: null,
-            exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
-          })
-        } as any);
-        
-        await upsertUser({
-          id: profile.id,
-          email: profile.email,
-          firstName: profile.name?.firstName,
-          lastName: profile.name?.lastName,
-          profileImageUrl: null,
         });
         
         done(null, user);
@@ -196,28 +157,48 @@ export async function setupAuth(app: Express) {
   });
 
   // Google Auth Routes
-  app.get("/api/auth/google", 
-    passport.authenticate("google", { scope: ["profile", "email"] })
-  );
-
-  app.get("/api/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "/" }),
-    (req, res) => {
-      res.redirect("/");
+  app.get("/api/auth/google", (req, res) => {
+    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      passport.authenticate("google", { scope: ["profile", "email"] })(req, res);
+    } else {
+      res.status(503).json({ 
+        error: "Authentification Google non configurée",
+        message: "L'authentification Google n'est pas disponible pour le moment. Veuillez utiliser l'authentification Replit."
+      });
     }
-  );
+  });
+
+  app.get("/api/auth/google/callback", (req, res) => {
+    if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+      passport.authenticate("google", { failureRedirect: "/" })(req, res, () => {
+        res.redirect("/");
+      });
+    } else {
+      res.redirect("/?error=google_not_configured");
+    }
+  });
 
   // Apple Auth Routes
-  app.get("/api/auth/apple",
-    passport.authenticate("apple")
-  );
-
-  app.get("/api/auth/apple/callback",
-    passport.authenticate("apple", { failureRedirect: "/" }),
-    (req, res) => {
-      res.redirect("/");
+  app.get("/api/auth/apple", (req, res) => {
+    if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY) {
+      passport.authenticate("apple")(req, res);
+    } else {
+      res.status(503).json({ 
+        error: "Authentification Apple non configurée",
+        message: "L'authentification Apple n'est pas disponible pour le moment. Veuillez utiliser l'authentification Replit."
+      });
     }
-  );
+  });
+
+  app.get("/api/auth/apple/callback", (req, res) => {
+    if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY) {
+      passport.authenticate("apple", { failureRedirect: "/" })(req, res, () => {
+        res.redirect("/");
+      });
+    } else {
+      res.redirect("/?error=apple_not_configured");
+    }
+  });
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
