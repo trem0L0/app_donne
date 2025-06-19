@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { NavigationTabs } from "@/components/layout/navigation-tabs";
 import { Heart } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
+import Landing from "@/pages/landing";
 import AssociationDetail from "@/pages/association-detail";
 import DonationFlow from "@/pages/donation-flow";
 import RegisterAssociation from "@/pages/register-association";
@@ -14,22 +16,34 @@ import DonationHistory from "@/pages/donation-history";
 import NotFound from "@/pages/not-found";
 
 function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/association/:id" component={AssociationDetail} />
-      <Route path="/donate/:id" component={DonationFlow} />
-      <Route path="/register" component={RegisterAssociation} />
-      <Route path="/history" component={DonationHistory} />
+      {isLoading || !isAuthenticated ? (
+        <Route path="/" component={Landing} />
+      ) : (
+        <>
+          <Route path="/" component={Home} />
+          <Route path="/association/:id" component={AssociationDetail} />
+          <Route path="/donate/:id" component={DonationFlow} />
+          <Route path="/register" component={RegisterAssociation} />
+          <Route path="/history" component={DonationHistory} />
+        </>
+      )}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
+    <TooltipProvider>
+      {isLoading || !isAuthenticated ? (
+        <Router />
+      ) : (
         <div className="mobile-container">
           <MobileHeader />
           <NavigationTabs />
@@ -44,8 +58,16 @@ function App() {
             </button>
           </div>
         </div>
-        <Toaster />
-      </TooltipProvider>
+      )}
+      <Toaster />
+    </TooltipProvider>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
     </QueryClientProvider>
   );
 }

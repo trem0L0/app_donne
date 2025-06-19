@@ -85,8 +85,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/donations", async (req, res) => {
     try {
       const validatedData = insertDonationSchema.parse(req.body);
+      
+      // If user is authenticated, associate donation with user
+      if (req.isAuthenticated && req.isAuthenticated()) {
+        const user = req.user as any;
+        validatedData.donorUserId = user.claims.sub;
+      }
+      
       const donation = await storage.createDonation(validatedData);
-      res.status(201).json(donation);
+      
+      // Return receipt data for immediate PDF generation
+      const association = await storage.getAssociation(donation.associationId);
+      if (!association) {
+        return res.status(404).json({ message: "Association not found" });
+      }
+
+      const receiptData = {
+        donation,
+        association,
+        donorInfo: {
+          firstName: donation.donorFirstName,
+          lastName: donation.donorLastName,
+          email: donation.donorEmail,
+          address: donation.donorAddress,
+          postalCode: donation.donorPostalCode,
+          city: donation.donorCity,
+        }
+      };
+
+      res.json(receiptData);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
