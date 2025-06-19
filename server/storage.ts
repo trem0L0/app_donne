@@ -1,8 +1,13 @@
-import { associations, donations, type Association, type InsertAssociation, type Donation, type InsertDonation } from "@shared/schema";
+import { associations, donations, users, type Association, type InsertAssociation, type Donation, type InsertDonation, type User, type UpsertUser } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations
+  // (IMPORTANT) these user operations are mandatory for Replit Auth.
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
   // Associations
   getAssociations(): Promise<Association[]>;
   getAssociation(id: number): Promise<Association | undefined>;
@@ -13,12 +18,35 @@ export interface IStorage {
   // Donations
   createDonation(donation: InsertDonation): Promise<Donation>;
   getDonationsByEmail(email: string): Promise<Donation[]>;
+  getDonationsByUserId(userId: string): Promise<Donation[]>;
   getDonationById(id: number): Promise<Donation | undefined>;
   getAllDonations(): Promise<Donation[]>;
   updateAssociationStats(associationId: number, amount: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations
+  // (IMPORTANT) these user operations are mandatory for Replit Auth.
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
   async getAssociations(): Promise<Association[]> {
     return await db.select().from(associations);
   }
