@@ -111,6 +111,10 @@ Changelog:
 - June 19, 2025. Initial setup
 - June 19, 2025. Added tax receipt generation system with PDF download functionality
 - June 19, 2025. Migrated from in-memory storage to PostgreSQL database with persistent data
+- June 19, 2025. Implemented Replit Auth system with user authentication and personal spaces
+- June 19, 2025. Modified donation flow to skip personal info step for authenticated users
+- June 19, 2025. Added Google and Apple Auth support with proper error handling
+- June 19, 2025. Fixed donation receipt generation and amount display issues
 ```
 
 ## User Preferences
