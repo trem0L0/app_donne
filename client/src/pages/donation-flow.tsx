@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Association } from "@shared/schema";
 import { formatCurrency, calculateTaxBenefit } from "@/lib/utils";
 import { downloadTaxReceipt, type ReceiptData } from "@/lib/pdf-generator";
+import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
 
 const donorInfoSchema = z.object({
@@ -36,6 +37,7 @@ export default function DonationFlow() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAuthenticated, user } = useAuth();
   
   const associationId = params?.id ? parseInt(params.id) : null;
   const [currentStep, setCurrentStep] = useState(1);
@@ -130,12 +132,47 @@ export default function DonationFlow() {
         });
         return;
       }
+      // Si l'utilisateur est connecté, sauter l'étape des informations personnelles
+      if (isAuthenticated && user) {
+        setCurrentStep(3); // Aller directement au paiement
+        return;
+      }
     }
     setCurrentStep(currentStep + 1);
   };
 
   const handlePreviousStep = () => {
     setCurrentStep(currentStep - 1);
+  };
+
+  const processPayment = () => {
+    if (!associationId) return;
+    
+    let donationData: any = {
+      associationId,
+      amount: getDonationAmount().toString(),
+      transactionId: `TXN_${Date.now()}`, // Mock transaction ID
+    };
+
+    // Si l'utilisateur est connecté, utiliser ses informations
+    if (isAuthenticated && user) {
+      donationData = {
+        ...donationData,
+        donorFirstName: user.firstName || 'Prénom',
+        donorLastName: user.lastName || 'Nom',
+        donorEmail: user.email || '',
+        donorAddress: 'Adresse non renseignée',
+        donorPostalCode: '00000',
+        donorCity: 'Ville non renseignée',
+        donorPhone: '',
+      };
+    } else {
+      // Si l'utilisateur n'est pas connecté, rediriger vers la connexion
+      window.location.href = '/api/login';
+      return;
+    }
+
+    donationMutation.mutate(donationData);
   };
 
   const onSubmit = (data: DonorInfo) => {
@@ -145,6 +182,7 @@ export default function DonationFlow() {
       ...data,
       associationId,
       amount: getDonationAmount().toString(),
+      transactionId: `TXN_${Date.now()}`, // Mock transaction ID
     };
     
     createDonationMutation.mutate(donationData);

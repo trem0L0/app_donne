@@ -94,18 +94,7 @@ export default function DonationHistory() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun don pour le moment</h3>
           <p className="text-gray-600 mb-6">Commencez à faire des dons pour voir votre historique ici</p>
           
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Entrez votre email pour voir vos dons
-            </label>
-            <Input
-              type="email"
-              placeholder="votre@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="max-w-sm mx-auto"
-            />
-          </div>
+
         </div>
       </div>
     );
@@ -115,18 +104,7 @@ export default function DonationHistory() {
     <div className="p-4">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Historique des dons</h1>
 
-      {/* Email Input */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Email du donateur
-        </label>
-        <Input
-          type="email"
-          placeholder="votre@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
+
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-4 mb-6">
