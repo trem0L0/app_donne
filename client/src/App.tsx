@@ -9,6 +9,7 @@ import { Heart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import Landing from "@/pages/landing";
+import Auth from "@/pages/auth";
 import AssociationDetail from "@/pages/association-detail";
 import DonationFlow from "@/pages/donation-flow";
 import RegisterAssociation from "@/pages/register-association";
@@ -21,10 +22,14 @@ function Router() {
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <>
+          <Route path="/" component={Landing} />
+          <Route path="/auth" component={Auth} />
+        </>
       ) : (
         <>
           <Route path="/" component={Home} />
+          <Route path="/auth" component={Auth} />
           <Route path="/association/:id" component={AssociationDetail} />
           <Route path="/donate/:id" component={DonationFlow} />
           <Route path="/register" component={RegisterAssociation} />
@@ -41,24 +46,13 @@ function AppContent() {
 
   return (
     <TooltipProvider>
-      {isLoading || !isAuthenticated ? (
-        <Router />
-      ) : (
-        <div className="mobile-container">
-          <MobileHeader />
-          <NavigationTabs />
-          <main className="pb-20">
-            <Router />
-          </main>
-          
-          {/* Floating Action Button */}
-          <div className="fixed bottom-6 right-6">
-            <button className="w-14 h-14 bg-accent text-black rounded-full shadow-lg flex items-center justify-center hover:bg-accent/90 transition-all hover:scale-105">
-              <Heart size={20} />
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="mobile-container">
+        {isAuthenticated && <MobileHeader />}
+        <main className={`pb-24 ${isAuthenticated ? '' : 'pt-0'}`}>
+          <Router />
+        </main>
+        <NavigationTabs />
+      </div>
       <Toaster />
     </TooltipProvider>
   );

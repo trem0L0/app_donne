@@ -35,9 +35,9 @@ export function generateTaxReceipt(data: ReceiptData): jsPDF {
   doc.setFont('helvetica', 'bold');
   doc.text('REÇU FISCAL', 20, 16);
   
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('DonVie - Plateforme de dons aux associations', pageWidth - 20, 16, { align: 'right' });
+  doc.text('DonVie - Plateforme de dons', pageWidth - 20, 16, { align: 'right' });
   
   // Association info section
   let yPos = 40;

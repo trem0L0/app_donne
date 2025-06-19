@@ -1,4 +1,6 @@
 import { Link, useLocation } from "wouter";
+import { Home, Heart, User, Clock } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface NavigationTabsProps {
   className?: string;
@@ -6,28 +8,36 @@ interface NavigationTabsProps {
 
 export function NavigationTabs({ className }: NavigationTabsProps) {
   const [location] = useLocation();
+  const { isAuthenticated } = useAuth();
 
-  const tabs = [
-    { path: "/", label: "Associations" },
-    { path: "/register", label: "S'inscrire" },
-    { path: "/history", label: "Historique" },
-  ];
+  const tabs = isAuthenticated 
+    ? [
+        { path: "/", label: "Accueil", icon: Home },
+        { path: "/history", label: "Historique", icon: Clock },
+        { path: "/register", label: "Association", icon: Heart },
+      ]
+    : [
+        { path: "/", label: "Accueil", icon: Home },
+        { path: "/auth", label: "Connexion", icon: User },
+      ];
 
   return (
-    <nav className={`bg-white border-b border-gray-200 px-4 ${className}`}>
-      <div className="flex space-x-6">
+    <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50 ${className}`}>
+      <div className="flex justify-around items-center max-w-md mx-auto">
         {tabs.map((tab) => {
           const isActive = location === tab.path;
+          const Icon = tab.icon;
           return (
             <Link key={tab.path} href={tab.path}>
               <button
-                className={`py-3 border-b-2 font-medium text-sm transition-colors ${
+                className={`flex flex-col items-center py-2 px-4 rounded-lg transition-colors ${
                   isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "text-primary bg-primary/10"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                {tab.label}
+                <Icon size={20} className="mb-1" />
+                <span className="text-xs font-medium">{tab.label}</span>
               </button>
             </Link>
           );
