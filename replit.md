@@ -42,13 +42,14 @@ RESTful API endpoints include:
 - `POST /api/associations` - Register new association
 - `POST /api/donations` - Create new donation
 - `GET /api/donations/email/:email` - Get donations by email
+- `GET /api/donations/:id/receipt` - Get tax receipt data for PDF generation
 
 ### Frontend Pages
 - **Home**: Browse and search associations with category filtering
 - **Association Detail**: Detailed view with donation button
-- **Donation Flow**: Multi-step donation process with form validation
+- **Donation Flow**: Multi-step donation process with form validation and instant tax receipt generation
 - **Register Association**: Form for new association registration
-- **Donation History**: Track personal donation history
+- **Donation History**: Track personal donation history with downloadable tax receipts
 
 ### Mobile-First Design
 - Responsive layout optimized for mobile devices
@@ -106,6 +107,7 @@ The application uses a modern full-stack TypeScript architecture with emphasis o
 ```
 Changelog:
 - June 19, 2025. Initial setup
+- June 19, 2025. Added tax receipt generation system with PDF download functionality
 ```
 
 ## User Preferences
