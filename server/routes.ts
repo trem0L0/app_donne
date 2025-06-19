@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { insertAssociationSchema, insertDonationSchema } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
