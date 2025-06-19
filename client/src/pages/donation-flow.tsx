@@ -1,0 +1,564 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRoute, useLocation } from "wouter";
+import { ArrowLeft, Heart, Check, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
+import { DonationSteps } from "@/components/donation-steps";
+import { apiRequest } from "@/lib/queryClient";
+import type { Association } from "@shared/schema";
+import { formatCurrency, calculateTaxBenefit } from "@/lib/utils";
+import { z } from "zod";
+
+const donorInfoSchema = z.object({
+  donorFirstName: z.string().min(1, "Le prénom est requis"),
+  donorLastName: z.string().min(1, "Le nom est requis"),
+  donorEmail: z.string().email("Email invalide"),
+  donorPhone: z.string().optional(),
+  donorAddress: z.string().min(1, "L'adresse est requise"),
+  donorPostalCode: z.string().min(5, "Code postal invalide"),
+  donorCity: z.string().min(1, "La ville est requise"),
+  acceptTerms: z.boolean().refine(val => val === true, "Vous devez accepter les conditions"),
+  newsletterOptIn: z.boolean().optional(),
+});
+
+type DonorInfo = z.infer<typeof donorInfoSchema>;
+
+export default function DonationFlow() {
+  const [match, params] = useRoute("/donate/:id");
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const associationId = params?.id ? parseInt(params.id) : null;
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState("");
+  const [donationResult, setDonationResult] = useState<any>(null);
+
+  const { data: association } = useQuery<Association>({
+    queryKey: [`/api/associations/${associationId}`],
+    enabled: !!associationId,
+  });
+
+  const form = useForm<DonorInfo>({
+    resolver: zodResolver(donorInfoSchema),
+    defaultValues: {
+      donorFirstName: "",
+      donorLastName: "",
+      donorEmail: "",
+      donorPhone: "",
+      donorAddress: "",
+      donorPostalCode: "",
+      donorCity: "",
+      acceptTerms: false,
+      newsletterOptIn: false,
+    },
+  });
+
+  const createDonationMutation = useMutation({
+    mutationFn: async (donationData: any) => {
+      const response = await apiRequest("POST", "/api/donations", donationData);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setDonationResult(data);
+      setCurrentStep(4); // Show confirmation
+      queryClient.invalidateQueries({ queryKey: ["/api/associations"] });
+      toast({
+        title: "Don confirmé !",
+        description: "Merci pour votre générosité",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du traitement de votre don",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getDonationAmount = () => {
+    return selectedAmount || parseFloat(customAmount) || 0;
+  };
+
+  const presetAmounts = [
+    { amount: 25, description: "Vaccins pour 5 enfants" },
+    { amount: 50, description: "Kit médical d'urgence" },
+    { amount: 100, description: "Soins pour 10 patients" },
+    { amount: 200, description: "Équipement chirurgical" },
+  ];
+
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      const amount = getDonationAmount();
+      if (amount < 1) {
+        toast({
+          title: "Montant requis",
+          description: "Veuillez sélectionner ou saisir un montant",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    setCurrentStep(currentStep + 1);
+  };
+
+  const handlePreviousStep = () => {
+    setCurrentStep(currentStep - 1);
+  };
+
+  const onSubmit = (data: DonorInfo) => {
+    if (!associationId) return;
+    
+    const donationData = {
+      ...data,
+      associationId,
+      amount: getDonationAmount().toString(),
+    };
+    
+    createDonationMutation.mutate(donationData);
+  };
+
+  if (!association) {
+    return (
+      <div className="p-4">
+        <p className="text-gray-500">Association non trouvée</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center mb-2">
+          <button
+            className="mr-3 p-2 rounded-full hover:bg-gray-100"
+            onClick={() => currentStep > 1 ? handlePreviousStep() : setLocation("/")}
+          >
+            <ArrowLeft className="text-gray-700" size={20} />
+          </button>
+          <h1 className="text-xl font-semibold text-gray-900">
+            {currentStep === 4 ? "Confirmation" : "Faire un don"}
+          </h1>
+        </div>
+        {currentStep < 4 && <DonationSteps currentStep={currentStep} />}
+      </div>
+
+      {/* Step 1: Amount Selection */}
+      {currentStep === 1 && (
+        <div className="p-4">
+          {/* Association Info */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                <Heart className="text-white" size={20} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">{association.name}</h3>
+                <p className="text-sm text-gray-600">Don sécurisé et défiscalisable</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Amount Selection */}
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Choisissez votre montant</h2>
+          
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {presetAmounts.map((preset) => (
+              <button
+                key={preset.amount}
+                className={`p-4 border-2 rounded-xl text-center transition-colors ${
+                  selectedAmount === preset.amount
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 hover:border-primary"
+                }`}
+                onClick={() => {
+                  setSelectedAmount(preset.amount);
+                  setCustomAmount("");
+                }}
+              >
+                <div className="text-xl font-bold text-gray-900">{preset.amount}€</div>
+                <div className="text-xs text-gray-600">{preset.description}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Custom Amount */}
+          <div className="mb-6">
+            <Label className="block text-sm font-medium text-gray-700 mb-2">
+              Ou entrez un montant personnalisé
+            </Label>
+            <div className="relative">
+              <Input
+                type="number"
+                placeholder="Montant en euros"
+                min="1"
+                value={customAmount}
+                onChange={(e) => {
+                  setCustomAmount(e.target.value);
+                  setSelectedAmount(null);
+                }}
+                className="text-lg pr-8"
+              />
+              <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">€</span>
+            </div>
+          </div>
+
+          {/* Tax Benefit Info */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start space-x-2">
+              <Check className="text-green-600 mt-0.5" size={16} />
+              <div className="text-sm">
+                <div className="font-medium text-green-800">Avantage fiscal</div>
+                <div className="text-green-700">
+                  66% de votre don est déductible de vos impôts dans la limite de 20% de votre revenu imposable.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            className="w-full py-4"
+            onClick={handleNextStep}
+          >
+            Continuer
+          </Button>
+        </div>
+      )}
+
+      {/* Step 2: Donor Information */}
+      {currentStep === 2 && (
+        <div className="p-4">
+          {/* Donation Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Montant du don</span>
+              <span className="text-xl font-bold text-gray-900">
+                {formatCurrency(getDonationAmount())}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500">Après déduction fiscale</span>
+              <span className="text-green-600 font-medium">
+                {formatCurrency(getDonationAmount() - calculateTaxBenefit(getDonationAmount()))}
+              </span>
+            </div>
+          </div>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(() => handleNextStep())} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="donorFirstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prénom *</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="donorLastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nom *</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="donorEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email *</FormLabel>
+                    <FormControl>
+                      <Input type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="donorPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Téléphone</FormLabel>
+                    <FormControl>
+                      <Input type="tel" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="donorAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Adresse *</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="donorPostalCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Code postal *</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="donorCity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ville *</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-3 pt-4">
+                <FormField
+                  control={form.control}
+                  name="acceptTerms"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm">
+                          J'accepte les conditions générales et la politique de confidentialité *
+                        </FormLabel>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="newsletterOptIn"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm">
+                          Je souhaite recevoir des informations sur les actions de l'association
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <Button type="submit" className="w-full py-4 mt-6">
+                Procéder au paiement
+              </Button>
+            </form>
+          </Form>
+        </div>
+      )}
+
+      {/* Step 3: Payment */}
+      {currentStep === 3 && (
+        <div className="p-4">
+          {/* Final Summary */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-gray-900 mb-3">Récapitulatif de votre don</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Association</span>
+                <span className="font-medium">{association.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Donateur</span>
+                <span className="font-medium">
+                  {form.getValues("donorFirstName")} {form.getValues("donorLastName")}
+                </span>
+              </div>
+              <div className="flex justify-between text-lg font-bold">
+                <span>Montant total</span>
+                <span>{formatCurrency(getDonationAmount())}</span>
+              </div>
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Coût réel après déduction</span>
+                <span>
+                  {formatCurrency(getDonationAmount() - calculateTaxBenefit(getDonationAmount()))}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mock Payment Form */}
+          <div className="bg-white border-2 border-gray-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900">Informations de paiement</h3>
+              <div className="flex space-x-2">
+                <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center">VISA</div>
+                <div className="w-8 h-5 bg-red-500 rounded text-white text-xs flex items-center justify-center">MC</div>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <Label className="block text-sm font-medium text-gray-700 mb-1">
+                  Numéro de carte
+                </Label>
+                <Input
+                  type="text"
+                  placeholder="1234 5678 9012 3456"
+                  className="font-mono"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date d'expiration
+                  </Label>
+                  <Input
+                    type="text"
+                    placeholder="MM/AA"
+                    className="font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">
+                    CVV
+                  </Label>
+                  <Input
+                    type="text"
+                    placeholder="123"
+                    className="font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Security Notice */}
+            <div className="mt-4 flex items-center space-x-2 text-sm text-gray-600">
+              <Shield className="text-green-600" size={16} />
+              <span>Paiement 100% sécurisé via Stripe</span>
+            </div>
+          </div>
+
+          <Button
+            className="w-full bg-green-500 hover:bg-green-600 py-4"
+            onClick={() => form.handleSubmit(onSubmit)()}
+            disabled={createDonationMutation.isPending}
+          >
+            <Heart className="mr-2" size={16} />
+            {createDonationMutation.isPending ? "Traitement..." : `Confirmer mon don de ${formatCurrency(getDonationAmount())}`}
+          </Button>
+        </div>
+      )}
+
+      {/* Step 4: Confirmation */}
+      {currentStep === 4 && donationResult && (
+        <div className="p-4 text-center">
+          <div className="mb-8 mt-12">
+            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="text-4xl text-green-600" size={48} />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Merci pour votre don !</h1>
+            <p className="text-gray-600">Votre générosité fait la différence</p>
+          </div>
+
+          {/* Donation Confirmation */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 text-left">
+            <h3 className="font-semibold text-gray-900 mb-4">Détails de votre don</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Numéro de transaction</span>
+                <span className="font-mono text-sm">#{donationResult.transactionId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Association</span>
+                <span className="font-medium">{association.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Montant</span>
+                <span className="font-bold text-lg">{formatCurrency(donationResult.amount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Date</span>
+                <span>{new Date(donationResult.createdAt).toLocaleDateString('fr-FR')}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tax Receipt Notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start space-x-2">
+              <Check className="text-blue-600 mt-0.5" size={16} />
+              <div className="text-sm text-left">
+                <div className="font-medium text-blue-800">Reçu fiscal</div>
+                <div className="text-blue-700">
+                  Un reçu fiscal vous sera envoyé par email dans les prochains jours pour votre déclaration d'impôts.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <Button
+              className="w-full bg-accent hover:bg-accent/90 text-black"
+              onClick={() => setLocation("/")}
+            >
+              <Heart className="mr-2" size={16} />
+              Faire un autre don
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
