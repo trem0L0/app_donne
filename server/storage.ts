@@ -8,6 +8,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserType(userId: string, userType: "donor" | "association"): Promise<void>;
+  updateUserAssociation(userId: string, associationId: number): Promise<void>;
   
   // Associations
   getAssociations(): Promise<Association[]>;
@@ -54,6 +55,16 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ 
         userType, 
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserAssociation(userId: string, associationId: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        associationId, 
         updatedAt: new Date() 
       })
       .where(eq(users.id, userId));

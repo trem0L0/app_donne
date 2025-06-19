@@ -118,6 +118,9 @@ Changelog:
 - June 19, 2025. Redesigned navigation with single bottom bar for mobile-first experience
 - June 19, 2025. Created unified authentication page for both donors and associations
 - June 19, 2025. Simplified interface with context-aware navigation tabs
+- June 19, 2025. Implemented user type system (donor vs association) with specialized interfaces
+- June 19, 2025. Added onboarding flow for user type selection and association registration
+- June 19, 2025. Created association dashboard with donation tracking and campaign management
 ```
 
 ## User Preferences
