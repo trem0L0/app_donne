@@ -44,6 +44,24 @@ export default function DonationFlow() {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [donationResult, setDonationResult] = useState<any>(null);
+  const [campaignName, setCampaignName] = useState<string>("");
+
+  // Extract URL parameters for QR code support
+  const urlParams = new URLSearchParams(window.location.search);
+  const qrAmount = urlParams.get('amount');
+  const qrCampaign = urlParams.get('campaign');
+
+  // Set initial values from QR code parameters
+  if (qrAmount && !selectedAmount && !customAmount) {
+    const amount = parseFloat(qrAmount);
+    if (!isNaN(amount)) {
+      setSelectedAmount(amount);
+    }
+  }
+  
+  if (qrCampaign && !campaignName) {
+    setCampaignName(qrCampaign);
+  }
 
   const { data: association } = useQuery<Association>({
     queryKey: [`/api/associations/${associationId}`],

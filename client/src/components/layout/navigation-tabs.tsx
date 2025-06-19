@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Heart, User, Clock } from "lucide-react";
+import { Home, Heart, User, Clock, QrCode } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface NavigationTabsProps {
@@ -24,6 +24,7 @@ export function NavigationTabs({ className }: NavigationTabsProps) {
       ]
     : [
         { path: "/", label: "Associations", icon: Home },
+        { path: "/qr-scan", label: "Scanner", icon: QrCode },
         { path: "/history", label: "Historique", icon: Clock },
       ];
 

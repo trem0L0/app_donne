@@ -189,7 +189,7 @@ export function QRCodeGenerator({ associationId, associationName }: QRCodeGenera
                 Copier le lien
               </Button>
               
-              {navigator.share && (
+              {typeof navigator !== 'undefined' && navigator.share && (
                 <Button variant="outline" onClick={shareQRCode}>
                   <Share2 className="h-4 w-4" />
                 </Button>

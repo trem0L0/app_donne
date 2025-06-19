@@ -121,6 +121,9 @@ Changelog:
 - June 19, 2025. Implemented user type system (donor vs association) with specialized interfaces
 - June 19, 2025. Added onboarding flow for user type selection and association registration
 - June 19, 2025. Created association dashboard with donation tracking and campaign management
+- June 19, 2025. Added QR code generation feature for associations with customizable parameters
+- June 19, 2025. Implemented QR code scanner for donors with camera access and URL parsing
+- June 19, 2025. Enhanced donation flow to support QR code parameters (amount, campaign)
 ```
 
 ## User Preferences
