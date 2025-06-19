@@ -3,8 +3,24 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertAssociationSchema, insertDonationSchema } from "@shared/schema";
 import { z } from "zod";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth middleware
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   // Get all associations
   app.get("/api/associations", async (_req, res) => {
     try {
@@ -87,6 +103,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(donations);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch donations" });
+    }
+  });
+
+  // Get donations by user (authenticated)
+  app.get("/api/donations/user", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const donations = await storage.getDonationsByUserId(userId);
+      res.json(donations);
+    } catch (error) {
+      console.error("Error fetching user donations:", error);
+      res.status(500).json({ message: "Failed to fetch user donations" });
     }
   });
 

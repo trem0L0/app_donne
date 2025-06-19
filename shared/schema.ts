@@ -29,6 +29,7 @@ export const donations = pgTable("donations", {
   donorAddress: text("donor_address").notNull(),
   donorPostalCode: text("donor_postal_code").notNull(),
   donorCity: text("donor_city").notNull(),
+  donorUserId: varchar("donor_user_id").references(() => users.id),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   transactionId: text("transaction_id").notNull(),
   status: text("status").notNull().default("completed"),
