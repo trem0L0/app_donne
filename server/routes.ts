@@ -91,6 +91,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Email/Password Authentication Routes
+  const registerSchema = z.object({
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    email: z.string().email(),
+    password: z.string().min(6),
+    userType: z.enum(["donor", "association"]),
+  });
+
+  const loginSchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(1),
+  });
+
+  // Register route
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const validationResult = registerSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Données invalides", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const { firstName, lastName, email, password, userType } = validationResult.data;
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Un compte avec cet email existe déjà" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Generate unique ID
+      const userId = randomBytes(16).toString('hex');
+
+      // Create user
+      const user = await storage.upsertUser({
+        id: userId,
+        email,
+        firstName,
+        lastName,
+        userType,
+        passwordHash,
+        authProvider: "email",
+      });
+
+      // Create session (simplified version)
+      (req.session as any).user = { id: userId, email, userType };
+
+      res.json({ 
+        success: true, 
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          firstName: user.firstName, 
+          lastName: user.lastName,
+          userType: user.userType 
+        } 
+      });
+    } catch (error) {
+      console.error("Error registering user:", error);
+      res.status(500).json({ message: "Erreur lors de l'inscription" });
+    }
+  });
+
+  // Login route
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const validationResult = loginSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Données invalides", 
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const { email, password } = validationResult.data;
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user || !user.passwordHash) {
+        return res.status(401).json({ message: "Email ou mot de passe incorrect" });
+      }
+
+      // Check password
+      const passwordValid = await bcrypt.compare(password, user.passwordHash);
+      if (!passwordValid) {
+        return res.status(401).json({ message: "Email ou mot de passe incorrect" });
+      }
+
+      // Create session
+      (req.session as any).user = { id: user.id, email: user.email, userType: user.userType };
+
+      res.json({ 
+        success: true, 
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          firstName: user.firstName, 
+          lastName: user.lastName,
+          userType: user.userType 
+        } 
+      });
+    } catch (error) {
+      console.error("Error logging in user:", error);
+      res.status(500).json({ message: "Erreur lors de la connexion" });
+    }
+  });
+
+  // Updated auth user route to support both session types
+  app.get('/api/auth/user', async (req: any, res) => {
+    try {
+      let userId: string;
+      
+      // Check for email/password session
+      if ((req.session as any).user) {
+        userId = (req.session as any).user.id;
+      }
+      // Check for Replit auth session
+      else if (req.user && req.user.claims) {
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Logout route
+  app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Erreur lors de la déconnexion" });
+      }
+      res.json({ success: true });
+    });
+  });
+
   // Get all associations
   app.get("/api/associations", async (_req, res) => {
     try {
