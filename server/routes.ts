@@ -94,8 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/donations/:id/receipt", async (req, res) => {
     try {
       const donationId = parseInt(req.params.id);
-      const donations = await storage.getDonationsByEmail(""); // Get all donations
-      const donation = donations.find(d => d.id === donationId);
+      const donation = await storage.getDonationById(donationId);
       
       if (!donation) {
         return res.status(404).json({ message: "Donation not found" });

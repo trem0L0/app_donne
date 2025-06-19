@@ -144,6 +144,14 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getDonationById(id: number): Promise<Donation | undefined> {
+    return this.donations.get(id);
+  }
+
+  async getAllDonations(): Promise<Donation[]> {
+    return Array.from(this.donations.values());
+  }
+
   async updateAssociationStats(associationId: number, amount: number): Promise<void> {
     const association = this.associations.get(associationId);
     if (association) {

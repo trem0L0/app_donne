@@ -6,9 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Download } from "lucide-react";
 import type { Donation, Association } from "@shared/schema";
 import { formatCurrency, formatDate, calculateTaxBenefit } from "@/lib/utils";
+import { downloadTaxReceipt, type ReceiptData } from "@/lib/pdf-generator";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DonationHistory() {
   const [email, setEmail] = useState("test@example.com"); // In real app, get from auth
+  const { toast } = useToast();
 
   const { data: donations, isLoading } = useQuery<Donation[]>({
     queryKey: [`/api/donations/email/${email}`],
@@ -21,6 +25,26 @@ export default function DonationHistory() {
 
   const getAssociationName = (associationId: number) => {
     return associations?.find(a => a.id === associationId)?.name || "Association inconnue";
+  };
+
+  const handleDownloadReceipt = async (donation: Donation) => {
+    try {
+      const response = await apiRequest("GET", `/api/donations/${donation.id}/receipt`);
+      const receiptData: ReceiptData = await response.json();
+      
+      downloadTaxReceipt(receiptData);
+      
+      toast({
+        title: "Reçu fiscal téléchargé",
+        description: "Votre reçu fiscal a été généré avec succès",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le reçu fiscal",
+        variant: "destructive",
+      });
+    }
   };
 
   const totalDonations = donations?.reduce((sum, donation) => sum + parseFloat(donation.amount), 0) || 0;
@@ -110,7 +134,7 @@ export default function DonationHistory() {
                   {getAssociationName(donation.associationId)}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  {formatDate(donation.createdAt)}
+                  {donation.createdAt ? formatDate(donation.createdAt) : 'Date inconnue'}
                 </p>
               </div>
               <div className="text-right">
@@ -126,9 +150,14 @@ export default function DonationHistory() {
               <span className="text-sm text-gray-500">
                 Transaction #{donation.transactionId}
               </span>
-              <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:text-primary/80"
+                onClick={() => handleDownloadReceipt(donation)}
+              >
                 <Download size={16} className="mr-1" />
-                Reçu
+                Reçu fiscal
               </Button>
             </div>
           </div>

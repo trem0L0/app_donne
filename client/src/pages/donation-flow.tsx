@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, Heart, Check, Shield } from "lucide-react";
+import { ArrowLeft, Heart, Check, Shield, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { DonationSteps } from "@/components/donation-steps";
 import { apiRequest } from "@/lib/queryClient";
 import type { Association } from "@shared/schema";
 import { formatCurrency, calculateTaxBenefit } from "@/lib/utils";
+import { downloadTaxReceipt, type ReceiptData } from "@/lib/pdf-generator";
 import { z } from "zod";
 
 const donorInfoSchema = z.object({
@@ -87,6 +88,28 @@ export default function DonationFlow() {
 
   const getDonationAmount = () => {
     return selectedAmount || parseFloat(customAmount) || 0;
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!donationResult || !association) return;
+    
+    try {
+      const response = await apiRequest("GET", `/api/donations/${donationResult.id}/receipt`);
+      const receiptData: ReceiptData = await response.json();
+      
+      downloadTaxReceipt(receiptData);
+      
+      toast({
+        title: "Reçu fiscal téléchargé",
+        description: "Votre reçu fiscal a été généré avec succès",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le reçu fiscal",
+        variant: "destructive",
+      });
+    }
   };
 
   const presetAmounts = [
@@ -529,7 +552,7 @@ export default function DonationFlow() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Date</span>
-                <span>{new Date(donationResult.createdAt).toLocaleDateString('fr-FR')}</span>
+                <span>{donationResult.createdAt ? new Date(donationResult.createdAt).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR')}</span>
               </div>
             </div>
           </div>
@@ -538,13 +561,22 @@ export default function DonationFlow() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-start space-x-2">
               <Check className="text-blue-600 mt-0.5" size={16} />
-              <div className="text-sm text-left">
-                <div className="font-medium text-blue-800">Reçu fiscal</div>
+              <div className="text-sm text-left flex-1">
+                <div className="font-medium text-blue-800">Reçu fiscal disponible</div>
                 <div className="text-blue-700">
-                  Un reçu fiscal vous sera envoyé par email dans les prochains jours pour votre déclaration d'impôts.
+                  Téléchargez votre reçu fiscal pour votre déclaration d'impôts (déduction de 66%).
                 </div>
               </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 w-full border-blue-200 text-blue-700 hover:bg-blue-100"
+              onClick={handleDownloadReceipt}
+            >
+              <Download size={16} className="mr-2" />
+              Télécharger le reçu fiscal
+            </Button>
           </div>
 
           {/* Action Buttons */}
