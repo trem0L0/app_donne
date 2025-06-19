@@ -35,6 +35,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Update user type
+  app.post('/api/user/update-type', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { userType } = req.body;
+      
+      if (!userType || !['donor', 'association'].includes(userType)) {
+        return res.status(400).json({ message: "Type d'utilisateur invalide" });
+      }
+
+      await storage.updateUserType(userId, userType);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating user type:", error);
+      res.status(500).json({ message: "Erreur lors de la mise à jour" });
+    }
+  });
+
   // Get all associations
   app.get("/api/associations", async (_req, res) => {
     try {

@@ -71,6 +71,8 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  userType: varchar("user_type", { enum: ["donor", "association"] }),
+  associationId: integer("association_id").references(() => associations.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

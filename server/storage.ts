@@ -7,6 +7,7 @@ export interface IStorage {
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserType(userId: string, userType: "donor" | "association"): Promise<void>;
   
   // Associations
   getAssociations(): Promise<Association[]>;
@@ -45,6 +46,16 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async updateUserType(userId: string, userType: "donor" | "association"): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        userType, 
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
   }
 
   async getAssociations(): Promise<Association[]> {
