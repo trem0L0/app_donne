@@ -11,11 +11,20 @@ import QRCode from "qrcode";
 interface QRCodeGeneratorProps {
   associationId: number;
   associationName: string;
+  amount?: number;
+  campaign?: string;
+  description?: string;
 }
 
-export function QRCodeGenerator({ associationId, associationName }: QRCodeGeneratorProps) {
-  const [amount, setAmount] = useState("");
-  const [campaign, setCampaign] = useState("");
+export function QRCodeGenerator({ 
+  associationId, 
+  associationName, 
+  amount: initialAmount, 
+  campaign: initialCampaign,
+  description: initialDescription 
+}: QRCodeGeneratorProps) {
+  const [amount, setAmount] = useState(initialAmount ? initialAmount.toString() : "");
+  const [campaign, setCampaign] = useState(initialCampaign || "");
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();

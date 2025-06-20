@@ -170,6 +170,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update association
+  app.patch("/api/associations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.session?.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const associationId = parseInt(req.params.id);
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.userType !== "association" || user.associationId !== associationId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updateData = req.body;
+      const association = await storage.updateAssociation(associationId, updateData);
+      
+      res.json(association);
+    } catch (error) {
+      console.error("Error updating association:", error);
+      res.status(500).json({ message: "Failed to update association" });
+    }
+  });
+
   // Email/Password Authentication Routes
   const registerSchema = z.object({
     firstName: z.string().min(1),

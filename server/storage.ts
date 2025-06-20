@@ -15,6 +15,7 @@ export interface IStorage {
   getAssociations(): Promise<Association[]>;
   getAssociation(id: number): Promise<Association | undefined>;
   createAssociation(association: InsertAssociation): Promise<Association>;
+  updateAssociation(id: number, data: Partial<InsertAssociation>): Promise<Association>;
   searchAssociations(query: string): Promise<Association[]>;
   getAssociationsByCategory(category: string): Promise<Association[]>;
   

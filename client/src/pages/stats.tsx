@@ -11,13 +11,13 @@ export default function StatsPage() {
   const [, setLocation] = useLocation();
 
   // Get association stats
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<any>({
     queryKey: ["/api/associations/stats"],
     enabled: !!user && user.userType === "association",
   });
 
   // Get recent donations
-  const { data: donations = [] } = useQuery({
+  const { data: donations = [] } = useQuery<any[]>({
     queryKey: ["/api/donations/association"],
     enabled: !!user && user.userType === "association",
   });

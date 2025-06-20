@@ -33,7 +33,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   // Get user's association
-  const { data: association, isLoading } = useQuery({
+  const { data: association, isLoading } = useQuery<any>({
     queryKey: ["/api/user/association"],
     enabled: !!user && user.userType === "association",
   });

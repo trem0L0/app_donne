@@ -23,7 +23,7 @@ export default function QRGeneratorPage() {
   const [qrCodeUrl, setQrCodeUrl] = useState("");
 
   // Get user's association
-  const { data: association } = useQuery({
+  const { data: association } = useQuery<any>({
     queryKey: ["/api/user/association"],
     enabled: !!user && user.userType === "association",
   });
