@@ -62,8 +62,11 @@ export function QRScanner({ onClose }: QRScannerProps) {
               aspectRatio: 1.0,
               rememberLastUsedCamera: true,
               showTorchButtonIfSupported: true,
+              videoConstraints: {
+                facingMode: "environment"
+              }
             },
-            false
+            true // verbose logging
           );
 
           scannerRef.current = scanner;
@@ -198,7 +201,8 @@ export function QRScanner({ onClose }: QRScannerProps) {
             </div>
             <div 
               id="qr-reader" 
-              className="w-full min-h-[300px] border-2 border-dashed border-gray-300 rounded-lg"
+              className="w-full"
+              style={{ minHeight: '300px' }}
             >
               {/* Scanner will be rendered here by Html5QrcodeScanner */}
             </div>
