@@ -24,15 +24,26 @@ export function QRScanner({ onClose }: QRScannerProps) {
 
       // Check if camera permission is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("Camera not supported on this device");
+        throw new Error("L'accès à la caméra n'est pas supporté sur cet appareil");
+      }
+
+      // Request camera permission first
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch (permissionError) {
+        throw new Error("Permission d'accès à la caméra refusée. Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur.");
       }
 
       const scanner = new Html5QrcodeScanner(
         "qr-reader",
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: { width: 280, height: 280 },
           aspectRatio: 1.0,
+          rememberLastUsedCamera: true,
+          showTorchButtonIfSupported: true,
+          showZoomSliderIfSupported: true,
+          defaultZoomValueIfSupported: 2,
         },
         false
       );
@@ -47,6 +58,10 @@ export function QRScanner({ onClose }: QRScannerProps) {
         },
         (error) => {
           // Error callback - we can ignore most scanning errors
+          if (error.includes("NotFoundException")) {
+            // No QR code found, this is normal
+            return;
+          }
           console.log("QR scan error:", error);
         }
       );
@@ -70,12 +85,9 @@ export function QRScanner({ onClose }: QRScannerProps) {
       const url = new URL(decodedText);
       
       // Check if it's a donation URL from our domain
-      if (url.origin === window.location.origin && url.pathname.startsWith('/donate/')) {
-        // Extract association ID from the path
-        const pathParts = url.pathname.split('/');
-        const associationId = pathParts[2];
-        
-        if (associationId) {
+      if (url.origin === window.location.origin) {
+        // Handle both /donate/:id and /donation-flow URLs
+        if (url.pathname.startsWith('/donate/') || url.pathname === '/donation-flow') {
           toast({
             title: "QR Code détecté",
             description: "Redirection vers la page de don...",
@@ -87,20 +99,33 @@ export function QRScanner({ onClose }: QRScannerProps) {
           onClose?.();
           return;
         }
+        
+        // Handle other valid internal URLs
+        if (url.pathname.startsWith('/association/')) {
+          toast({
+            title: "QR Code détecté",
+            description: "Redirection vers la page de l'association...",
+          });
+          
+          const fullPath = url.pathname + url.search;
+          setLocation(fullPath);
+          onClose?.();
+          return;
+        }
       }
       
-      // If it's not a donation URL, show an error
+      // If it's not a recognized URL, show an error
       toast({
         title: "QR Code non reconnu",
-        description: "Ce QR Code ne correspond pas à une page de don valide",
+        description: "Ce QR Code ne correspond pas à une page valide de l'application",
         variant: "destructive",
       });
       
     } catch (err) {
+      // If it's not a URL, maybe it's just text content
       toast({
-        title: "QR Code invalide",
-        description: "Le contenu du QR Code n'est pas une URL valide",
-        variant: "destructive",
+        title: "QR Code détecté",
+        description: `Contenu: ${decodedText.substring(0, 50)}${decodedText.length > 50 ? '...' : ''}`,
       });
     }
   };
