@@ -41,6 +41,8 @@ function Router() {
         <Route path="/" component={Landing} />
         <Route path="/auth" component={Auth} />
         <Route path="/association/:id" component={AssociationDetail} />
+        <Route path="/donate/:id" component={DonationFlow} />
+        <Route path="/donation-flow" component={DonationFlow} />
         <Route component={NotFound} />
       </Switch>
     );
