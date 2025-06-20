@@ -233,14 +233,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userType === "association") {
         const association = await storage.createAssociation({
           name: associationFields.associationName!,
-          description: associationFields.associationDescription!,
-          mission: associationFields.associationMission!,
+          mission: associationFields.associationDescription!,
+          fullMission: associationFields.associationMission!,
           category: associationFields.associationCategory!,
-          address: associationFields.associationAddress || null,
-          phone: associationFields.associationPhone || null,
-          website: associationFields.associationWebsite || null,
-          email: email, // Use the user's email for the association
-          verified: false, // New associations start unverified
+          address: associationFields.associationAddress || "Non spécifiée",
+          phone: associationFields.associationPhone || "Non spécifié",
+          website: associationFields.associationWebsite,
+          email: email,
+          siret: "En attente",
         });
         associationId = association.id;
       }
