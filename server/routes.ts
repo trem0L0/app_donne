@@ -177,6 +177,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     email: z.string().email(),
     password: z.string().min(6),
     userType: z.enum(["donor", "association"]),
+    // Association fields (optional, only required if userType === "association")
+    associationName: z.string().optional(),
+    associationDescription: z.string().optional(),
+    associationMission: z.string().optional(),
+    associationCategory: z.string().optional(),
+    associationAddress: z.string().optional(),
+    associationPhone: z.string().optional(),
+    associationWebsite: z.string().optional(),
   });
 
   const loginSchema = z.object({
@@ -195,7 +203,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { firstName, lastName, email, password, userType } = validationResult.data;
+      const { firstName, lastName, email, password, userType, ...associationFields } = validationResult.data;
+
+      // Validate association fields if userType is association
+      if (userType === "association") {
+        if (!associationFields.associationName || !associationFields.associationDescription || 
+            !associationFields.associationMission || !associationFields.associationCategory) {
+          return res.status(400).json({ 
+            message: "Tous les champs obligatoires de l'association sont requis" 
+          });
+        }
+      }
 
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
@@ -209,6 +227,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique ID
       const userId = randomBytes(16).toString('hex');
 
+      let associationId: number | null = null;
+
+      // Create association if user type is association
+      if (userType === "association") {
+        const association = await storage.createAssociation({
+          name: associationFields.associationName!,
+          description: associationFields.associationDescription!,
+          mission: associationFields.associationMission!,
+          category: associationFields.associationCategory!,
+          address: associationFields.associationAddress || null,
+          phone: associationFields.associationPhone || null,
+          website: associationFields.associationWebsite || null,
+          email: email, // Use the user's email for the association
+          verified: false, // New associations start unverified
+        });
+        associationId = association.id;
+      }
+
       // Create user
       const user = await storage.upsertUser({
         id: userId,
@@ -216,6 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName,
         lastName,
         userType,
+        associationId,
         passwordHash,
         authProvider: "email",
       });
