@@ -19,6 +19,7 @@ export function QRScanner({ onClose }: QRScannerProps) {
 
   const startScanning = async () => {
     try {
+      console.log("Starting QR scan...");
       setError(null);
       setIsScanning(true);
 
@@ -29,42 +30,57 @@ export function QRScanner({ onClose }: QRScannerProps) {
 
       // Request camera permission first
       try {
-        await navigator.mediaDevices.getUserMedia({ video: true });
+        console.log("Requesting camera permission...");
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        console.log("Camera permission granted");
+        
+        // Stop the stream immediately as Html5QrcodeScanner will handle it
+        stream.getTracks().forEach(track => track.stop());
       } catch (permissionError) {
+        console.error("Camera permission error:", permissionError);
         throw new Error("Permission d'accès à la caméra refusée. Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur.");
+      }
+
+      // Clear any existing content in the scanner element
+      const scannerElement = document.getElementById("qr-reader");
+      if (scannerElement) {
+        scannerElement.innerHTML = "";
       }
 
       const scanner = new Html5QrcodeScanner(
         "qr-reader",
         {
           fps: 10,
-          qrbox: { width: 280, height: 280 },
+          qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
           rememberLastUsedCamera: true,
           showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-          defaultZoomValueIfSupported: 2,
         },
         false
       );
 
       scannerRef.current = scanner;
 
-      scanner.render(
-        (decodedText) => {
-          // Success callback
-          handleQRCodeDetected(decodedText);
-          stopScanning();
-        },
-        (error) => {
-          // Error callback - we can ignore most scanning errors
-          if (error.includes("NotFoundException")) {
-            // No QR code found, this is normal
-            return;
+      try {
+        scanner.render(
+          (decodedText) => {
+            console.log("QR Code detected:", decodedText);
+            handleQRCodeDetected(decodedText);
+            stopScanning();
+          },
+          (error) => {
+            // Error callback - we can ignore most scanning errors
+            if (error.includes("NotFoundException") || error.includes("No MultiFormat Readers")) {
+              // No QR code found, this is normal
+              return;
+            }
+            console.log("QR scan error:", error);
           }
-          console.log("QR scan error:", error);
-        }
-      );
+        );
+      } catch (renderError) {
+        console.error("Scanner render error:", renderError);
+        throw new Error("Erreur lors de l'initialisation du scanner");
+      }
 
     } catch (err: any) {
       setError(err.message || "Erreur lors de l'accès à la caméra");
@@ -164,7 +180,18 @@ export function QRScanner({ onClose }: QRScannerProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            <div id="qr-reader" className="w-full"></div>
+            <div className="text-center mb-4">
+              <p className="text-sm text-muted-foreground">
+                Caméra activée - Placez le QR code dans le cadre
+              </p>
+            </div>
+            <div 
+              id="qr-reader" 
+              className="w-full min-h-[300px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center"
+            >
+              {/* Scanner will be rendered here */}
+              <div className="text-gray-500">Initialisation de la caméra...</div>
+            </div>
             <div className="flex gap-2">
               <Button onClick={stopScanning} variant="outline" className="flex-1">
                 <X className="mr-2 h-4 w-4" />
