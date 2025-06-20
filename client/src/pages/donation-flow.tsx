@@ -65,9 +65,9 @@ export default function DonationFlow() {
   const form = useForm<DonorInfo>({
     resolver: zodResolver(donorInfoSchema),
     defaultValues: {
-      donorFirstName: "",
-      donorLastName: "",
-      donorEmail: "",
+      donorFirstName: user?.firstName || "", // Pré-remplir si l'utilisateur est connecté
+      donorLastName: user?.lastName || "", // Pré-remplir si l'utilisateur est connecté
+      donorEmail: user?.email || "", // Pré-remplir si l'utilisateur est connecté
       donorPhone: "",
       donorAddress: "",
       donorPostalCode: "",
@@ -91,10 +91,10 @@ export default function DonationFlow() {
         description: "Merci pour votre générosité",
       });
     },
-    onError: () => {
+    onError: (error: any) => { // Ajouter le type any pour l'erreur
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors du traitement de votre don",
+        description: error.message || "Une erreur est survenue lors du traitement de votre don",
         variant: "destructive",
       });
     },
@@ -154,33 +154,63 @@ export default function DonationFlow() {
   };
 
   const handlePreviousStep = () => {
-    setCurrentStep(currentStep - 1);
+    // Si l'utilisateur est connecté et qu'il revient de l'étape 3 vers l'étape 1, sauter l'étape 2
+    if (currentStep === 3 && isAuthenticated && user) {
+      setCurrentStep(1);
+    } else {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const processPayment = () => {
-    if (!associationId) return;
+    if (!associationId) {
+      toast({
+        title: "Erreur",
+        description: "Association non trouvée pour le don.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     let donationData: any = {
       associationId,
       amount: getDonationAmount().toString(),
-      transactionId: `TXN_${Date.now()}`, // Mock transaction ID
+      transactionId: `TXN_${Date.now()}`, // Mock transaction ID, à améliorer
     };
 
     // Si l'utilisateur est connecté, utiliser ses informations
     if (isAuthenticated && user) {
+      // Les champs sont déjà pré-remplis par useForm.defaultValues,
+      // mais on peut les forcer ici pour s'assurer qu'ils sont inclus
+      // même si non modifiés par l'utilisateur (utile pour l'étape 3 si on saute l'étape 2)
       donationData = {
         ...donationData,
         donorFirstName: user.firstName || 'Prénom',
         donorLastName: user.lastName || 'Nom',
         donorEmail: user.email || '',
-        donorAddress: 'Adresse non renseignée',
+        // Les informations d'adresse et de téléphone ne sont pas stockées dans l'objet user de useAuth.
+        // Il faudrait les récupérer d'un profil utilisateur plus complet ou les demander spécifiquement.
+        // Pour l'instant, on les met en "Non renseigné" si l'étape 2 est sautée.
+        donorAddress: 'Non renseignée', 
         donorPostalCode: '00000',
-        donorCity: 'Ville non renseignée',
+        donorCity: 'Non renseignée',
         donorPhone: '',
       };
-    } else {
-      // Si l'utilisateur n'est pas connecté, rediriger vers la connexion
-      window.location.href = '/api/login';
+    } 
+    // Si l'utilisateur n'est PAS connecté et arrive ici (via un bug ou un chemin non prévu),
+    // on devrait théoriquement avoir les infos du formulaire à l'étape 2.
+    // Cependant, pour éviter une erreur si currentStep est 3 sans infos de l'étape 2,
+    // on vérifie la validation complète du formulaire.
+    else {
+      // Normalement, cette branche ne devrait pas être atteinte si l'étape 2 a été validée.
+      // Mais si elle l'est, c'est que l'utilisateur n'est pas connecté et n'a pas rempli les champs.
+      // On redirige vers la page d'authentification pour qu'il se connecte ou s'inscrive.
+      setLocation("/auth"); // Rediriger vers la page /auth unifiée
+      toast({
+        title: "Action requise",
+        description: "Veuillez vous connecter ou fournir vos informations pour continuer le don.",
+        variant: "info",
+      });
       return;
     }
 
@@ -188,13 +218,20 @@ export default function DonationFlow() {
   };
 
   const onSubmit = (data: DonorInfo) => {
-    if (!associationId) return;
+    if (!associationId) {
+      toast({
+        title: "Erreur",
+        description: "Association non trouvée pour le don.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const donationData = {
       ...data,
       associationId,
       amount: getDonationAmount().toString(),
-      transactionId: `TXN_${Date.now()}`, // Mock transaction ID
+      transactionId: `TXN_${Date.now()}`, // Mock transaction ID, à améliorer
     };
     
     createDonationMutation.mutate(donationData);
@@ -328,7 +365,7 @@ export default function DonationFlow() {
           </div>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(() => handleNextStep())} className="space-y-4">
+            <form onSubmit={form.handleSubmit(() => setCurrentStep(3))} className="space-y-4"> {/* Passe à l'étape 3 après validation */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -567,13 +604,7 @@ export default function DonationFlow() {
 
           <Button
             className="w-full bg-green-500 hover:bg-green-600 py-4"
-            onClick={() => {
-              if (isAuthenticated && user) {
-                processPayment();
-              } else {
-                form.handleSubmit(onSubmit)();
-              }
-            }}
+            onClick={processPayment} // Appel direct de processPayment
             disabled={createDonationMutation.isPending}
           >
             <Heart className="mr-2" size={16} />

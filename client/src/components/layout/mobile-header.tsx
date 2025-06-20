@@ -7,9 +7,45 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast"; // Importer useToast
 
 export function MobileHeader() {
   const { user } = useAuth();
+  const { toast } = useToast(); // Initialiser useToast
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/logout", {
+        method: "POST", // Utiliser POST pour la déconnexion unifiée
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Déconnexion réussie",
+          description: "Vous avez été déconnecté de votre compte.",
+        });
+        // Rediriger après un court délai pour que le toast soit visible
+        setTimeout(() => {
+          window.location.href = "/"; // Rediriger vers la page d'accueil
+        }, 500);
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Erreur de déconnexion",
+          description: errorData.message || "Une erreur est survenue lors de la déconnexion.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erreur lors de la déconnexion:", error);
+      toast({
+        title: "Erreur de déconnexion",
+        description: "Une erreur réseau est survenue. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -39,7 +75,7 @@ export function MobileHeader() {
             <DropdownMenuItem disabled>
               {user?.firstName || user?.email || 'Utilisateur'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.location.href = '/api/logout'}>
+            <DropdownMenuItem onClick={handleLogout}> {/* Appel de la fonction handleLogout */}
               <LogOut className="mr-2 h-4 w-4" />
               Se déconnecter
             </DropdownMenuItem>

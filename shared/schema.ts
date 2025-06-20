@@ -13,9 +13,9 @@ export const associations = pgTable("associations", {
   website: text("website"),
   address: text("address").notNull(),
   siret: text("siret").notNull(),
-  verified: boolean("verified").default(false),
-  donorCount: integer("donor_count").default(0),
-  totalRaised: decimal("total_raised", { precision: 10, scale: 2 }).default("0"),
+  verified: boolean("verified").default(false).notNull(), // S'assurer que verified est notNull
+  donorCount: integer("donor_count").default(0).notNull(), // Rendre non-nullable
+  totalRaised: decimal("total_raised", { precision: 10, scale: 2 }).default("0").notNull(), // Rendre non-nullable
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -38,10 +38,20 @@ export const donations = pgTable("donations", {
 
 export const insertAssociationSchema = createInsertSchema(associations).omit({
   id: true,
-  verified: true,
-  donorCount: true,
-  totalRaised: true,
+  verified: true, // `verified` sera géré par le backend après vérification
+  donorCount: true, // `donorCount` sera géré par le backend
+  totalRaised: true, // `totalRaised` sera géré par le backend
   createdAt: true,
+}).extend({
+  // Ajouter des validations pour les champs obligatoires du formulaire
+  name: z.string().min(1, "Le nom de l'association est requis."),
+  mission: z.string().min(1, "La mission courte est requise."),
+  fullMission: z.string().min(1, "La description complète est requise."),
+  category: z.string().min(1, "La catégorie est requise."),
+  email: z.string().email("Email invalide.").min(1, "L'email est requis."),
+  phone: z.string().min(1, "Le téléphone est requis."),
+  address: z.string().min(1, "L'adresse est requise."),
+  siret: z.string().length(14, "Le numéro SIRET doit contenir 14 chiffres.").regex(/^\d+$/, "Le SIRET ne doit contenir que des chiffres.").min(1, "Le SIRET est requis."),
 });
 
 export const insertDonationSchema = createInsertSchema(donations).omit({

@@ -49,6 +49,8 @@ export default function AssociationDetail() {
       case "social": return "🤝";
       case "culture": return "🎨";
       case "sport": return "⚽";
+      case "humanitarian": return "🌍"; // Ajout d'un emoji pour "Humanitaire"
+      case "animals": return "🐾"; // Ajout d'un emoji pour "Protection animale"
       default: return "❤️";
     }
   };
@@ -96,44 +98,24 @@ export default function AssociationDetail() {
           <p className="text-gray-700 leading-relaxed">{association.fullMission}</p>
         </div>
 
-        {/* Impact Stats */}
+        {/* Impact Stats - Utilisation des données réelles ou des valeurs par défaut 0 */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Notre impact</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-primary">
-                {association.category === "health" && "12M+"}
-                {association.category === "education" && "500K+"}
-                {association.category === "environment" && "1M+"}
-                {association.category === "social" && "50K+"}
-                {association.category === "culture" && "200K+"}
-                {association.category === "sport" && "100K+"}
+                {association.donorCount.toLocaleString()}+ {/* Utiliser le nombre réel de donateurs */}
               </div>
               <div className="text-sm text-gray-600">
-                {association.category === "health" && "Patients soignés"}
-                {association.category === "education" && "Enfants éduqués"}
-                {association.category === "environment" && "Arbres plantés"}
-                {association.category === "social" && "Personnes aidées"}
-                {association.category === "culture" && "Événements organisés"}
-                {association.category === "sport" && "Jeunes formés"}
+                Donateurs uniques
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-primary">
-                {association.category === "health" && "70"}
-                {association.category === "education" && "45"}
-                {association.category === "environment" && "35"}
-                {association.category === "social" && "25"}
-                {association.category === "culture" && "15"}
-                {association.category === "sport" && "20"}
+                {formatCurrency(association.totalRaised)}
               </div>
               <div className="text-sm text-gray-600">
-                {association.category === "health" && "Pays d'intervention"}
-                {association.category === "education" && "Écoles construites"}
-                {association.category === "environment" && "Projets actifs"}
-                {association.category === "social" && "Centres d'aide"}
-                {association.category === "culture" && "Partenariats"}
-                {association.category === "sport" && "Clubs soutenus"}
+                Collectés au total
               </div>
             </div>
           </div>

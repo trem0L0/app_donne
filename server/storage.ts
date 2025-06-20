@@ -92,6 +92,10 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...insertAssociation,
         website: insertAssociation.website || null,
+        verified: false, // Les nouvelles associations ne sont pas vérifiées par défaut
+        donorCount: 0, // Initialisation
+        totalRaised: "0", // Initialisation
+        // siret: insertAssociation.siret, // Le SIRET devrait être celui fourni par l'utilisateur
       })
       .returning();
     return association;

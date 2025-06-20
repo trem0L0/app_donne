@@ -2,13 +2,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, TrendingUp, Users, Euro, Calendar } from "lucide-react";
+import { ArrowLeft, TrendingUp, Users, Euro, Calendar, BarChart2 } from "lucide-react"; // Ajout de BarChart2
 import { useLocation } from "wouter";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function StatsPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Get user's association
+  const { data: userAssociation, isLoading: associationLoading } = useQuery<any>({
+    queryKey: ["/api/user/association"],
+    enabled: !!user && user.userType === "association",
+  });
 
   // Get association stats
   const { data: stats } = useQuery<any>({
@@ -42,7 +48,13 @@ export default function StatsPage() {
     );
   }
 
-  const recentDonations = donations.slice(0, 5);
+  const recentDonations = donations.slice(0, 5); // Affiche les 5 derniers dons
+
+  // Calculs pour les statistiques
+  const totalRaised = parseFloat(stats?.totalRaised || "0");
+  const donorCount = stats?.donorCount || 0;
+  const donationCount = stats?.donationCount || 0;
+  const avgDonation = donationCount > 0 ? totalRaised / donationCount : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -77,7 +89,7 @@ export default function StatsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Total collecté</p>
                   <p className="text-lg font-semibold">
-                    {formatCurrency(stats?.totalRaised || 0)}
+                    {formatCurrency(totalRaised)}
                   </p>
                 </div>
               </div>
@@ -91,9 +103,9 @@ export default function StatsPage() {
                   <Users className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Donateurs</p>
+                  <p className="text-sm text-gray-600">Donateurs uniques</p> {/* Texte ajusté */}
                   <p className="text-lg font-semibold">
-                    {stats?.donorCount || 0}
+                    {donorCount}
                   </p>
                 </div>
               </div>
@@ -104,12 +116,12 @@ export default function StatsPage() {
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                  <BarChart2 className="h-5 w-5 text-purple-600" /> {/* Icône ajustée */}
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Dons totaux</p>
+                  <p className="text-sm text-gray-600">Nombre total de dons</p> {/* Texte ajusté */}
                   <p className="text-lg font-semibold">
-                    {stats?.totalDonations || 0}
+                    {donationCount}
                   </p>
                 </div>
               </div>
@@ -125,10 +137,7 @@ export default function StatsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Don moyen</p>
                   <p className="text-lg font-semibold">
-                    {stats?.totalDonations > 0 
-                      ? formatCurrency((stats?.totalRaised || 0) / stats.totalDonations)
-                      : "0 €"
-                    }
+                    {formatCurrency(avgDonation)}
                   </p>
                 </div>
               </div>
@@ -190,7 +199,7 @@ export default function StatsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 text-sm">
-              {stats?.totalDonations === 0 && (
+              {donationCount === 0 && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="font-medium text-blue-800">Commencez votre première collecte</p>
                   <p className="text-blue-600 mt-1">
@@ -199,7 +208,7 @@ export default function StatsPage() {
                 </div>
               )}
               
-              {(stats?.totalDonations || 0) > 0 && (stats?.totalDonations || 0) < 10 && (
+              {donationCount > 0 && donationCount < 10 && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="font-medium text-green-800">Très bon début !</p>
                   <p className="text-green-600 mt-1">

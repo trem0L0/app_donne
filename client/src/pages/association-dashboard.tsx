@@ -64,9 +64,18 @@ export default function AssociationDashboard() {
   const totalRaised = donations.reduce((sum, donation) => sum + parseFloat(donation.amount), 0);
   const donorCount = new Set(donations.map(d => d.donorEmail)).size;
   const thisMonthDonations = donations.filter(d => 
-    new Date(d.createdAt).getMonth() === new Date().getMonth()
+    new Date(d.createdAt).getMonth() === new Date().getMonth() &&
+    new Date(d.createdAt).getFullYear() === new Date().getFullYear() // S'assurer de la même année
   );
   const thisMonthAmount = thisMonthDonations.reduce((sum, d) => sum + parseFloat(d.amount), 0);
+
+  // Valeurs par défaut pour les stats si elles sont nulles
+  const defaultStats = { totalDonations: 0, donorCount: 0, avgDonation: 0, donationCount: 0 };
+  const actualStats = stats || defaultStats;
+
+  // Objectif mensuel (exemple, pourrait être configurable dans le futur)
+  const monthlyGoal = 5000; 
+  const progressValue = (thisMonthAmount / monthlyGoal) * 100;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -82,7 +91,7 @@ export default function AssociationDashboard() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Link href="/register">
+          <Link href="/settings"> {/* Lien vers la page des paramètres pour modifier */}
             <Button variant="outline">
               <Settings className="mr-2 h-4 w-4" />
               Modifier
@@ -121,13 +130,14 @@ export default function AssociationDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vues du profil</CardTitle>
-            <Eye className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Nombre de dons</CardTitle> {/* Titre mis à jour */}
+            <TrendingUp className="h-4 w-4 text-muted-foreground" /> {/* Icône ajustée */}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,247</div>
+            <div className="text-2xl font-bold">{actualStats.donationCount}</div> {/* Utilisation de actualStats.donationCount */}
             <p className="text-xs text-muted-foreground">
-              +12% par rapport au mois dernier
+              {/* Le calcul précis d'un pourcentage par rapport au mois dernier nécessiterait des données du mois précédent */}
+              {thisMonthDonations.length > 0 ? `+${thisMonthDonations.length} ce mois` : "Aucun don ce mois"} 
             </p>
           </CardContent>
         </Card>
@@ -138,14 +148,14 @@ export default function AssociationDashboard() {
         <CardHeader>
           <CardTitle>Objectif de financement mensuel</CardTitle>
           <CardDescription>
-            Vous avez collecté {formatCurrency(thisMonthAmount)} sur un objectif de {formatCurrency(5000)} ce mois
+            Vous avez collecté {formatCurrency(thisMonthAmount)} sur un objectif de {formatCurrency(monthlyGoal)} ce mois
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Progress value={(thisMonthAmount / 5000) * 100} className="w-full" />
+          <Progress value={progressValue > 100 ? 100 : progressValue} className="w-full" /> {/* Limiter la barre de progression à 100% */}
           <div className="flex justify-between text-sm text-muted-foreground mt-2">
-            <span>{Math.round((thisMonthAmount / 5000) * 100)}% atteint</span>
-            <span>Objectif: {formatCurrency(5000)}</span>
+            <span>{Math.round(progressValue)}% atteint</span>
+            <span>Objectif: {formatCurrency(monthlyGoal)}</span>
           </div>
         </CardContent>
       </Card>
@@ -215,7 +225,9 @@ export default function AssociationDashboard() {
                   <p className="text-sm text-muted-foreground mb-3">
                     {userAssociation.mission}
                   </p>
-                  <Button size="sm" variant="outline">Modifier</Button>
+                  <Link href="/settings">
+                    <Button size="sm" variant="outline">Modifier</Button>
+                  </Link>
                 </div>
                 
                 <div className="p-4 border rounded-lg">
@@ -223,7 +235,7 @@ export default function AssociationDashboard() {
                   <p className="text-sm text-muted-foreground mb-3">
                     Ajoutez des photos pour illustrer votre mission
                   </p>
-                  <Button size="sm" variant="outline">Ajouter des photos</Button>
+                  <Button size="sm" variant="outline" disabled>Ajouter des photos</Button> {/* Désactivé car non implémenté */}
                 </div>
               </div>
               
@@ -276,7 +288,7 @@ export default function AssociationDashboard() {
                       {thisMonthDonations.length} reçus pour {formatCurrency(thisMonthAmount)}
                     </p>
                   </div>
-                  <Button variant="outline">
+                  <Button variant="outline" disabled> {/* Désactivé car le rapport n'est pas implémenté */}
                     <FileText className="mr-2 h-4 w-4" />
                     Télécharger le rapport
                   </Button>

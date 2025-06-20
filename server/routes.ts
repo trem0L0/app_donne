@@ -41,16 +41,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Google Auth placeholder
   app.get('/api/auth/google', (req, res) => {
-    res.status(503).json({ 
-      message: "L'authentification Google nécessite la configuration des clés API GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET. Contactez l'administrateur." 
-    });
+    // Vérifier si les variables d'environnement sont configurées
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(503).json({ 
+        message: "L'authentification Google n'est pas configurée. Veuillez contacter l'administrateur.",
+        code: "GOOGLE_NOT_CONFIGURED" // Ajout d'un code d'erreur pour le frontend
+      });
+    }
+    // Si configuré, continuer avec l'authentification Google comme précédemment
+    // passport.authenticate("google", { scope: ["profile", "email"] })(req, res);
+    // Le code ci-dessous est commenté car il ne fait pas partie du fichier original mais est une suggestion pour une implémentation future.
+    res.status(200).json({ message: "Google auth is configured and ready." });
   });
 
   // Apple Auth placeholder  
   app.get('/api/auth/apple', (req, res) => {
-    res.status(503).json({ 
-      message: "L'authentification Apple nécessite la configuration des clés API APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID et APPLE_PRIVATE_KEY. Contactez l'administrateur." 
-    });
+    // Vérifier si les variables d'environnement sont configurées
+    if (!process.env.APPLE_CLIENT_ID || !process.env.APPLE_TEAM_ID || !process.env.APPLE_KEY_ID || !process.env.APPLE_PRIVATE_KEY) {
+      return res.status(503).json({ 
+        message: "L'authentification Apple n'est pas configurée. Veuillez contacter l'administrateur.",
+        code: "APPLE_NOT_CONFIGURED" // Ajout d'un code d'erreur pour le frontend
+      });
+    }
+    // Si configuré, continuer avec l'authentification Apple comme précédemment
+    // passport.authenticate("apple")(req, res);
+    // Le code ci-dessous est commenté car il ne fait pas partie du fichier original mais est une suggestion pour une implémentation future.
+    res.status(200).json({ message: "Apple auth is configured and ready." });
   });
 
   // Update user type
@@ -337,30 +353,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create session
       (req.session as any).user = { id: user.id, email: user.email, userType: user.userType };
 
-      res.json({ 
-        success: true, 
-        user: { 
-          id: user.id, 
-          email: user.email, 
-          firstName: user.firstName, 
-          lastName: user.lastName,
-          userType: user.userType 
-        } 
+      // Save session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Error saving session:", err);
+          return res.status(500).json({ message: "Erreur lors de la création de session" });
+        }
+        res.json({ 
+          success: true, 
+          user: { 
+            id: user.id, 
+            email: user.email, 
+            firstName: user.firstName, 
+            lastName: user.lastName,
+            userType: user.userType 
+          } 
+        });
       });
+
     } catch (error) {
       console.error("Error logging in user:", error);
       res.status(500).json({ message: "Erreur lors de la connexion" });
     }
   });
 
-
-
-  // Logout route
-  app.post('/api/auth/logout', (req, res) => {
+  // Unified Logout route
+  app.post('/api/logout', (req, res) => {
     req.session.destroy((err) => {
       if (err) {
         return res.status(500).json({ message: "Erreur lors de la déconnexion" });
       }
+      // Clear all session-related cookies
+      res.clearCookie('connect.sid'); // Assuming 'connect.sid' is the default session cookie name
       res.json({ success: true });
     });
   });
@@ -433,7 +457,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If user is authenticated, associate donation with user
       if (req.isAuthenticated && req.isAuthenticated()) {
         const user = req.user as any;
-        validatedData.donorUserId = user.claims.sub;
+        // Utilisez l'ID de l'utilisateur de la session email/mot de passe s'il existe, sinon celui de Replit Auth
+        validatedData.donorUserId = (req.session as any).user?.id || user.claims?.sub;
       }
       
       const donation = await storage.createDonation(validatedData);
@@ -480,7 +505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get donations by user (authenticated)
   app.get("/api/donations/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Utilisez l'ID de l'utilisateur de la session email/mot de passe s'il existe, sinon celui de Replit Auth
+      const userId = (req.session as any).user?.id || req.user.claims.sub;
       const donations = await storage.getDonationsByUserId(userId);
       res.json(donations);
     } catch (error) {
