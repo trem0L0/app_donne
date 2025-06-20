@@ -26,9 +26,25 @@ const registerSchema = z.object({
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
   confirmPassword: z.string(),
   userType: z.enum(["donor", "association"], { required_error: "Veuillez choisir un type de compte" }),
+  // Association fields (optional, only required if userType === "association")
+  associationName: z.string().optional(),
+  associationDescription: z.string().optional(),
+  associationMission: z.string().optional(),
+  associationCategory: z.string().optional(),
+  associationAddress: z.string().optional(),
+  associationPhone: z.string().optional(),
+  associationWebsite: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Les mots de passe ne correspondent pas",
   path: ["confirmPassword"],
+}).refine((data) => {
+  if (data.userType === "association") {
+    return data.associationName && data.associationDescription && data.associationMission && data.associationCategory;
+  }
+  return true;
+}, {
+  message: "Veuillez remplir tous les champs obligatoires de l'association",
+  path: ["associationName"],
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -38,6 +54,7 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState(1);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -59,6 +76,13 @@ export default function Auth() {
       password: "",
       confirmPassword: "",
       userType: undefined,
+      associationName: "",
+      associationDescription: "",
+      associationMission: "",
+      associationCategory: "",
+      associationAddress: "",
+      associationPhone: "",
+      associationWebsite: "",
     },
   });
 
@@ -122,6 +146,24 @@ export default function Auth() {
     },
   });
 
+  const selectedUserType = registerForm.watch("userType");
+
+  const handleNextStep = () => {
+    // Validate current step before proceeding
+    const fieldsToValidate = ["firstName", "lastName", "email", "password", "confirmPassword", "userType"];
+    
+    registerForm.trigger(fieldsToValidate as any).then((isValid) => {
+      if (isValid) {
+        if (selectedUserType === "association") {
+          setRegistrationStep(2);
+        } else {
+          // For donors, proceed directly to registration
+          onRegister(registerForm.getValues());
+        }
+      }
+    });
+  };
+
   const onLogin = (data: LoginForm) => {
     loginMutation.mutate(data);
   };
@@ -130,60 +172,16 @@ export default function Auth() {
     registerMutation.mutate(data);
   };
 
-  const handleGoogleAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/google');
-      if (response.status === 503) {
-        const data = await response.json();
-        toast({
-          title: "Service indisponible",
-          description: data.message,
-          variant: "destructive",
-        });
-      } else {
-        window.location.href = '/api/auth/google';
-      }
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur de connexion",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleAppleAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/apple');
-      if (response.status === 503) {
-        const data = await response.json();
-        toast({
-          title: "Service indisponible",
-          description: data.message,
-          variant: "destructive",
-        });
-      } else {
-        window.location.href = '/api/auth/apple';
-      }
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur de connexion",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 dark:from-gray-900 dark:to-gray-800 px-4 py-8">
-      <div className="container mx-auto max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Heart className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">DonVie</h1>
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Heart className="h-8 w-8 text-white" />
           </div>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
+          <h1 className="text-3xl font-bold text-gray-900">DonVie</h1>
+          <p className="text-gray-600 mt-2">
             Rejoignez notre communauté de donateurs et d'associations
           </p>
         </div>
@@ -267,28 +265,6 @@ export default function Auth() {
                     </Button>
                   </form>
                 </Form>
-
-                <div className="mt-6">
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-gray-500">Ou continuer avec</span>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <Button variant="outline" onClick={handleGoogleAuth}>
-                      <SiGoogle className="w-4 h-4 mr-2" />
-                      Google
-                    </Button>
-                    <Button variant="outline" onClick={handleAppleAuth}>
-                      <SiApple className="w-4 h-4 mr-2" />
-                      Apple
-                    </Button>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -305,199 +281,330 @@ export default function Auth() {
               <CardContent>
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={registerForm.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Prénom</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Jean" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    {/* Step 1: Basic Information */}
+                    {registrationStep === 1 && (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={registerForm.control}
+                            name="firstName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Prénom</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Jean" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                      <FormField
-                        control={registerForm.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nom</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Dupont" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                          <FormField
+                            control={registerForm.control}
+                            name="lastName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Nom</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Dupont" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
-                    <FormField
-                      control={registerForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="jean.dupont@example.com"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        <FormField
+                          control={registerForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="email"
+                                  placeholder="jean.dupont@example.com"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                    <FormField
-                      control={registerForm.control}
-                      name="userType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Type de compte</FormLabel>
-                          <FormControl>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div
-                                onClick={() => field.onChange("donor")}
-                                className={`cursor-pointer p-4 border-2 rounded-lg transition-colors ${
-                                  field.value === "donor"
-                                    ? "border-blue-500 bg-blue-50"
-                                    : "border-gray-200 hover:border-gray-300"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Users className="h-5 w-5 text-blue-600" />
-                                  <span className="font-medium">Donateur</span>
+                        <FormField
+                          control={registerForm.control}
+                          name="userType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Type de compte</FormLabel>
+                              <FormControl>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div
+                                    onClick={() => field.onChange("donor")}
+                                    className={`cursor-pointer p-4 border-2 rounded-lg transition-colors ${
+                                      field.value === "donor"
+                                        ? "border-blue-500 bg-blue-50"
+                                        : "border-gray-200 hover:border-gray-300"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Users className="h-5 w-5 text-blue-600" />
+                                      <span className="font-medium">Donateur</span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      Faire des dons aux associations
+                                    </p>
+                                  </div>
+                                  
+                                  <div
+                                    onClick={() => field.onChange("association")}
+                                    className={`cursor-pointer p-4 border-2 rounded-lg transition-colors ${
+                                      field.value === "association"
+                                        ? "border-green-500 bg-green-50"
+                                        : "border-gray-200 hover:border-gray-300"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Building className="h-5 w-5 text-green-600" />
+                                      <span className="font-medium">Association</span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      Recevoir des dons
+                                    </p>
+                                  </div>
                                 </div>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  Faire des dons aux associations
-                                </p>
-                              </div>
-                              
-                              <div
-                                onClick={() => field.onChange("association")}
-                                className={`cursor-pointer p-4 border-2 rounded-lg transition-colors ${
-                                  field.value === "association"
-                                    ? "border-green-500 bg-green-50"
-                                    : "border-gray-200 hover:border-gray-300"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Building className="h-5 w-5 text-green-600" />
-                                  <span className="font-medium">Association</span>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={registerForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mot de passe</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="Choisissez un mot de passe"
+                                    {...field}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                  >
+                                    {showPassword ? (
+                                      <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                      <Eye className="h-4 w-4" />
+                                    )}
+                                  </Button>
                                 </div>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  Recevoir des dons
-                                </p>
-                              </div>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Mot de passe</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showPassword ? "text" : "password"}
-                                placeholder="Choisissez un mot de passe"
-                                {...field}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                onClick={() => setShowPassword(!showPassword)}
-                              >
-                                {showPassword ? (
-                                  <EyeOff className="h-4 w-4" />
-                                ) : (
-                                  <Eye className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        <FormField
+                          control={registerForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirmer le mot de passe</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    placeholder="Répétez votre mot de passe"
+                                    {...field}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  >
+                                    {showConfirmPassword ? (
+                                      <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                      <Eye className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                    <FormField
-                      control={registerForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirmer le mot de passe</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showConfirmPassword ? "text" : "password"}
-                                placeholder="Répétez votre mot de passe"
-                                {...field}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                              >
-                                {showConfirmPassword ? (
-                                  <EyeOff className="h-4 w-4" />
-                                ) : (
-                                  <Eye className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        <Button 
+                          type="button"
+                          onClick={handleNextStep}
+                          className="w-full"
+                          disabled={registerMutation.isPending}
+                        >
+                          {selectedUserType === "association" ? "Continuer" : "S'inscrire"}
+                        </Button>
+                      </>
+                    )}
 
-                    <Button 
-                      type="submit" 
-                      className="w-full"
-                      disabled={registerMutation.isPending}
-                    >
-                      {registerMutation.isPending ? "Inscription..." : "S'inscrire"}
-                    </Button>
+                    {/* Step 2: Association Information */}
+                    {registrationStep === 2 && selectedUserType === "association" && (
+                      <>
+                        <div className="mb-4">
+                          <Button 
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setRegistrationStep(1)}
+                            className="mb-2"
+                          >
+                            ← Retour
+                          </Button>
+                          <h3 className="text-lg font-semibold">Informations de votre association</h3>
+                          <p className="text-sm text-gray-600">
+                            Complétez les informations de votre association pour finaliser l'inscription
+                          </p>
+                        </div>
+
+                        <FormField
+                          control={registerForm.control}
+                          name="associationName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nom de l'association *</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Association ABC" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={registerForm.control}
+                          name="associationCategory"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Catégorie *</FormLabel>
+                              <FormControl>
+                                <select 
+                                  {...field}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">Sélectionnez une catégorie</option>
+                                  <option value="Santé">Santé</option>
+                                  <option value="Éducation">Éducation</option>
+                                  <option value="Environnement">Environnement</option>
+                                  <option value="Aide sociale">Aide sociale</option>
+                                  <option value="Culture">Culture</option>
+                                  <option value="Sport">Sport</option>
+                                  <option value="Autre">Autre</option>
+                                </select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={registerForm.control}
+                          name="associationDescription"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Description courte *</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Description de votre association en une phrase"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={registerForm.control}
+                          name="associationMission"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mission *</FormLabel>
+                              <FormControl>
+                                <textarea 
+                                  {...field}
+                                  placeholder="Décrivez la mission et les objectifs de votre association"
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={registerForm.control}
+                          name="associationAddress"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Adresse</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Adresse complète" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={registerForm.control}
+                            name="associationPhone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Téléphone</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="01 23 45 67 89" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={registerForm.control}
+                            name="associationWebsite"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Site web</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="https://..." {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <Button 
+                          type="submit" 
+                          className="w-full"
+                          disabled={registerMutation.isPending}
+                        >
+                          {registerMutation.isPending ? "Inscription..." : "Finaliser l'inscription"}
+                        </Button>
+                      </>
+                    )}
                   </form>
                 </Form>
-
-                <div className="mt-6">
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-gray-500">Ou continuer avec</span>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <Button variant="outline" onClick={handleGoogleAuth}>
-                      <SiGoogle className="w-4 h-4 mr-2" />
-                      Google
-                    </Button>
-                    <Button variant="outline" onClick={handleAppleAuth}>
-                      <SiApple className="w-4 h-4 mr-2" />
-                      Apple
-                    </Button>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
