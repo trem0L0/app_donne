@@ -41,46 +41,57 @@ export function QRScanner({ onClose }: QRScannerProps) {
         throw new Error("Permission d'accès à la caméra refusée. Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur.");
       }
 
-      // Clear any existing content in the scanner element
-      const scannerElement = document.getElementById("qr-reader");
-      if (scannerElement) {
-        scannerElement.innerHTML = "";
-      }
-
-      const scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          rememberLastUsedCamera: true,
-          showTorchButtonIfSupported: true,
-        },
-        false
-      );
-
-      scannerRef.current = scanner;
-
-      try {
-        scanner.render(
-          (decodedText) => {
-            console.log("QR Code detected:", decodedText);
-            handleQRCodeDetected(decodedText);
-            stopScanning();
-          },
-          (error) => {
-            // Error callback - we can ignore most scanning errors
-            if (error.includes("NotFoundException") || error.includes("No MultiFormat Readers")) {
-              // No QR code found, this is normal
-              return;
-            }
-            console.log("QR scan error:", error);
+      // Wait a bit to ensure the DOM is ready
+      setTimeout(() => {
+        try {
+          // Clear any existing content in the scanner element
+          const scannerElement = document.getElementById("qr-reader");
+          if (scannerElement) {
+            scannerElement.innerHTML = "";
+            console.log("Scanner element found and cleared");
+          } else {
+            console.error("Scanner element not found");
+            throw new Error("Élément scanner non trouvé");
           }
-        );
-      } catch (renderError) {
-        console.error("Scanner render error:", renderError);
-        throw new Error("Erreur lors de l'initialisation du scanner");
-      }
+
+          const scanner = new Html5QrcodeScanner(
+            "qr-reader",
+            {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0,
+              rememberLastUsedCamera: true,
+              showTorchButtonIfSupported: true,
+            },
+            false
+          );
+
+          scannerRef.current = scanner;
+          console.log("Scanner created, starting render...");
+
+          scanner.render(
+            (decodedText) => {
+              console.log("QR Code detected:", decodedText);
+              handleQRCodeDetected(decodedText);
+              stopScanning();
+            },
+            (error) => {
+              // Error callback - we can ignore most scanning errors
+              if (error.includes("NotFoundException") || error.includes("No MultiFormat Readers")) {
+                // No QR code found, this is normal
+                return;
+              }
+              console.log("QR scan error:", error);
+            }
+          );
+          
+          console.log("Scanner render completed");
+        } catch (renderError) {
+          console.error("Scanner render error:", renderError);
+          setError("Erreur lors de l'initialisation du scanner");
+          setIsScanning(false);
+        }
+      }, 100);
 
     } catch (err: any) {
       setError(err.message || "Erreur lors de l'accès à la caméra");
@@ -187,10 +198,9 @@ export function QRScanner({ onClose }: QRScannerProps) {
             </div>
             <div 
               id="qr-reader" 
-              className="w-full min-h-[300px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center"
+              className="w-full min-h-[300px] border-2 border-dashed border-gray-300 rounded-lg"
             >
-              {/* Scanner will be rendered here */}
-              <div className="text-gray-500">Initialisation de la caméra...</div>
+              {/* Scanner will be rendered here by Html5QrcodeScanner */}
             </div>
             <div className="flex gap-2">
               <Button onClick={stopScanning} variant="outline" className="flex-1">
