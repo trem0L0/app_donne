@@ -150,6 +150,15 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(donations);
   }
 
+  async updateAssociation(id: number, data: Partial<InsertAssociation>): Promise<Association> {
+    const [association] = await db
+      .update(associations)
+      .set(data)
+      .where(eq(associations.id, id))
+      .returning();
+    return association;
+  }
+
   async updateAssociationStats(associationId: number, amount: number): Promise<void> {
     const [association] = await db.select().from(associations).where(eq(associations.id, associationId));
     if (association) {

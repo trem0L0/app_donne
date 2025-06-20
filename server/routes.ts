@@ -173,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update association
   app.patch("/api/associations/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub || req.session?.user?.id;
+      const userId = (req.user as any)?.claims?.sub || (req.session as any)?.user?.id;
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
