@@ -33,16 +33,23 @@ export function QRCodeGenerator({
     setIsGenerating(true);
     try {
       const baseUrl = window.location.origin;
-      let donationUrl = `${baseUrl}/donate/${associationId}`;
+      let donationUrl = `${baseUrl}/donation-flow`;
       
       // Add parameters if specified
       const params = new URLSearchParams();
-      if (amount) params.append('amount', amount);
-      if (campaign) params.append('campaign', campaign);
+      params.append('association', associationId.toString());
       
-      if (params.toString()) {
-        donationUrl += `?${params.toString()}`;
+      if (amount && amount !== "libre") {
+        params.append('amount', amount);
       }
+      if (campaign) {
+        params.append('campaign', campaign);
+      }
+      if (initialDescription) {
+        params.append('description', initialDescription);
+      }
+      
+      donationUrl += `?${params.toString()}`;
 
       const qrCodeDataUrl = await QRCode.toDataURL(donationUrl, {
         width: 300,
@@ -80,15 +87,22 @@ export function QRCodeGenerator({
 
   const copyDonationLink = async () => {
     const baseUrl = window.location.origin;
-    let donationUrl = `${baseUrl}/donate/${associationId}`;
+    let donationUrl = `${baseUrl}/donation-flow`;
     
     const params = new URLSearchParams();
-    if (amount) params.append('amount', amount);
-    if (campaign) params.append('campaign', campaign);
+    params.append('association', associationId.toString());
     
-    if (params.toString()) {
-      donationUrl += `?${params.toString()}`;
+    if (amount && amount !== "libre") {
+      params.append('amount', amount);
     }
+    if (campaign) {
+      params.append('campaign', campaign);
+    }
+    if (initialDescription) {
+      params.append('description', initialDescription);
+    }
+    
+    donationUrl += `?${params.toString()}`;
 
     try {
       await navigator.clipboard.writeText(donationUrl);
@@ -144,7 +158,7 @@ export function QRCodeGenerator({
                 <SelectValue placeholder="Choisir un montant" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Montant libre</SelectItem>
+                <SelectItem value="libre">Montant libre</SelectItem>
                 <SelectItem value="10">10 €</SelectItem>
                 <SelectItem value="25">25 €</SelectItem>
                 <SelectItem value="50">50 €</SelectItem>
