@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Heart, User, Clock, QrCode } from "lucide-react";
+import { Home, Heart, User, Clock, QrCode, BarChart3, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface NavigationTabsProps {
@@ -20,7 +20,9 @@ export function NavigationTabs({ className }: NavigationTabsProps) {
     : user?.userType === "association"
     ? [
         { path: "/", label: "Tableau de bord", icon: Home },
-        { path: "/register", label: "Mon association", icon: Heart },
+        { path: "/qr-generator", label: "QR Code", icon: QrCode },
+        { path: "/stats", label: "Statistiques", icon: BarChart3 },
+        { path: "/settings", label: "Paramètres", icon: Settings },
       ]
     : [
         { path: "/", label: "Associations", icon: Home },

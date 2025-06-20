@@ -17,6 +17,9 @@ import DonationFlow from "@/pages/donation-flow";
 import RegisterAssociation from "@/pages/register-association";
 import DonationHistory from "@/pages/donation-history";
 import QRScan from "@/pages/qr-scan";
+import QRGenerator from "@/pages/qr-generator";
+import Stats from "@/pages/stats";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -60,6 +63,9 @@ function Router() {
         <>
           <Route path="/" component={AssociationDashboard} />
           <Route path="/dashboard" component={AssociationDashboard} />
+          <Route path="/qr-generator" component={QRGenerator} />
+          <Route path="/stats" component={Stats} />
+          <Route path="/settings" component={Settings} />
           <Route path="/register" component={RegisterAssociation} />
           <Route path="/association/:id" component={AssociationDetail} />
         </>
